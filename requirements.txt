@@ -1,0 +1,3 @@
+# Phase 1 ใช้แค่ไลบรารีในตัวของ Python
+# Phase 2 (login + TOTP)
+pyotp>=2.9

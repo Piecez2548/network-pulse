@@ -1,0 +1,7 @@
+data/
+# มี hash รหัสผ่านและ TOTP secret — ห้าม commit
+config.json
+config.json.tmp
+.claude/settings.local.json
+__pycache__/
+*.pyc

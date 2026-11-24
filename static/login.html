@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>เข้าสู่ระบบ · Network Pulse</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="login-body">
+  <main class="login-wrap">
+    <form class="card login-card" id="login-form" autocomplete="on" novalidate>
+      <div class="brand login-brand">
+        <svg viewBox="0 0 32 32" class="brand-mark" aria-hidden="true"><path d="M3 17h6l3-8 5 15 4-11 2 4h6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div><div class="brand-name">Network Pulse</div><div class="brand-sub">Home Monitor</div></div>
+      </div>
+      <h1 class="login-title">เข้าสู่ระบบ</h1>
+      <p class="muted login-sub">ใส่รหัสผ่าน และรหัส 6 หลักจากแอป Authenticator</p>
+
+      <label class="field">
+        <span>รหัสผ่าน</span>
+        <input type="password" id="password" name="password" autocomplete="current-password" required autofocus>
+      </label>
+      <label class="field">
+        <span>รหัส 6 หลัก (TOTP)</span>
+        <input type="text" id="code" name="code" class="mono otp-input" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="000000" required>
+      </label>
+
+      <div class="login-error" id="login-error" role="alert" hidden></div>
+      <button class="btn btn-primary" id="login-btn" type="submit">เข้าสู่ระบบ</button>
+      <p class="login-foot muted">เข้าได้จากเครื่องนี้และอุปกรณ์ใน Wi-Fi เดียวกันเท่านั้น</p>
+    </form>
+  </main>
+  <script src="/static/login.js"></script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Network Pulse</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" class="brand-mark" aria-hidden="true"><path d="M3 17h6l3-8 5 15 4-11 2 4h6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><div class="brand-name">Network Pulse</div><div class="brand-sub">Home Monitor</div></div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="sidebar-foot mono" id="side-foot"></div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <div class="crumb" id="crumb">Network Pulse</div>
+        <h1 id="page-title">Overview</h1>
+      </div>
+      <div class="top-actions">
+        <span class="pill pill-unknown" id="overall-pill"><span class="dot"></span><span id="overall-text">Unknown</span></span>
+        <button class="btn" id="notif-btn" type="button">เปิดการแจ้งเตือน</button>
+        <span class="clock mono" id="clock">--:--:--</span>
+        <button class="btn icon-btn" id="logout-btn" type="button" hidden title="ออกจากระบบ">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+          <span>ออกจากระบบ</span>
+        </button>
+      </div>
+    </header>
+    <section class="view" id="view"></section>
+  </main>
+
+  <footer class="statusbar" id="statusbar">
+    <span class="sb-item"><span class="dot dot-ok pulse" id="sb-dot"></span><span id="sb-mon">กำลังเชื่อมต่อ…</span></span>
+    <span class="sb-item mono" id="sb-interval"></span>
+    <span class="sb-item mono" id="sb-last"></span>
+    <span class="sb-spacer"></span>
+    <span class="sb-item mono" id="sb-db"></span>
+    <span class="sb-item mono" id="sb-listen"></span>
+    <span class="sb-item mono" id="sb-lan"></span>
+  </footer>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>
