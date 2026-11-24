@@ -21,7 +21,9 @@ python autostart.py on       :: เปิดพร้อม Windows + เริ�
 python autostart.py status   :: ดูสถานะ
 python autostart.py stop     :: หยุดตัวที่ทำงานเบื้องหลัง
 python autostart.py off      :: เลิกเปิดพร้อม Windows
+python autostart.py desktop  :: สร้าง shortcut "Network Pulse" บน Desktop
 ```
+- shortcut บน Desktop: ดับเบิลคลิกแล้วเริ่มทำงาน (ถ้ายังไม่ได้เปิด) และเปิดหน้าเว็บให้ — ไม่มีหน้าต่างดำเด้งขึ้นมา
 - ใช้ shortcut ในโฟลเดอร์ Startup ของผู้ใช้ → ทำงานหลัง login โดยไม่ต้องใช้สิทธิ์ Administrator
 - ทำงานด้วย `pythonw.exe` (ไม่มีหน้าต่าง) ข้อความของโปรแกรมอยู่ใน `data/netpulse.log` (เกิน 1 MB เก็บของเก่าเป็น `.log.1`)
 - เปิดซ้ำไม่ได้ — ถ้ามีตัวหนึ่งใช้พอร์ต 8000 อยู่ ตัวที่สองจะแจ้งแล้วปิดตัวเอง
@@ -103,7 +105,8 @@ python setup_auth.py --lan on :: เปิดให้มือถือใน W
 
 ```
 app.py                 จุดเริ่มโปรแกรม
-autostart.py           เปิดพร้อม Windows / เริ่ม-หยุดตัวที่ทำงานเบื้องหลัง
+autostart.py           เปิดพร้อม Windows / เริ่ม-หยุดตัวที่ทำงานเบื้องหลัง / shortcut บน Desktop
+tools/make_icon.py     สร้าง static/netpulse.ico (ไอคอนของ shortcut) ด้วยไลบรารีในตัว
 setup_auth.py          ตั้งรหัสผ่าน + TOTP / เปิด-ปิด LAN
 netpulse/auth.py       รหัสผ่าน, TOTP, session, จำกัดการเดารหัส
 netpulse/qr.py         สร้าง QR Code (pure Python) สำหรับแอป Authenticator

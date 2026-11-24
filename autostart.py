@@ -5,6 +5,8 @@
     python autostart.py status   ดูว่าตั้งไว้ไหม และตอนนี้ทำงานอยู่หรือเปล่า
     python autostart.py start    เริ่มทำงานเบื้องหลังเดี๋ยวนี้
     python autostart.py stop     หยุดตัวที่ทำงานเบื้องหลัง
+    python autostart.py open     เริ่ม (ถ้ายังไม่ทำงาน) แล้วเปิดหน้าเว็บ — ใช้โดย shortcut บน Desktop
+    python autostart.py desktop  สร้าง shortcut "Network Pulse" บน Desktop
 
 ทำงานด้วย pythonw.exe จึงไม่มีหน้าต่าง — ข้อความของโปรแกรมอยู่ใน data/netpulse.log
 ไม่ต้องใช้สิทธิ์ Administrator
@@ -16,24 +18,32 @@ import subprocess
 import sys
 import time
 import urllib.request
+import webbrowser
 
 from netpulse.config import BASE_DIR, load_config
 
 APP = os.path.join(BASE_DIR, "app.py")
+SELF = os.path.abspath(__file__)
+ICON = os.path.join(BASE_DIR, "static", "netpulse.ico")
 SHORTCUT_NAME = "Network Pulse.lnk"
 LOG = os.path.join(BASE_DIR, "data", "netpulse.log")
 NO_WINDOW = 0x08000000
 DETACHED = 0x00000008 | 0x00000200  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
 
 
-def startup_dir():
+def _shell_folder(csidl):
     buf = ctypes.create_unicode_buffer(260)
-    ctypes.windll.shell32.SHGetFolderPathW(None, 7, None, 0, buf)  # CSIDL_STARTUP
+    ctypes.windll.shell32.SHGetFolderPathW(None, csidl, None, 0, buf)
     return buf.value
 
 
 def shortcut_path():
-    return os.path.join(startup_dir(), SHORTCUT_NAME)
+    return os.path.join(_shell_folder(7), SHORTCUT_NAME)  # CSIDL_STARTUP
+
+
+def desktop_shortcut_path():
+    # CSIDL_DESKTOPDIRECTORY — รองรับ Desktop ที่ถูกย้ายไป OneDrive
+    return os.path.join(_shell_folder(0x10), SHORTCUT_NAME)
 
 
 def pythonw():
@@ -50,16 +60,24 @@ def _powershell(script, env_extra=None):
         capture_output=True, text=True, env=env, creationflags=NO_WINDOW)
 
 
-def create_shortcut():
+def create_shortcut(path, script, description):
+    """shortcut ที่รัน pythonw.exe <script> (ไม่มีหน้าต่าง) พร้อมไอคอนของโปรแกรม"""
     # ส่งค่าผ่าน environment เพื่อไม่ต้องกังวลเรื่อง quote ของ path ที่มีช่องว่าง
     r = _powershell(
         "$s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:NP_LNK);"
         "$s.TargetPath = $env:NP_TARGET; $s.Arguments = $env:NP_ARGS;"
         "$s.WorkingDirectory = $env:NP_WD; $s.WindowStyle = 7;"
-        "$s.Description = 'Network Pulse - home internet monitor'; $s.Save()",
-        {"NP_LNK": shortcut_path(), "NP_TARGET": pythonw(), "NP_ARGS": f'"{APP}"', "NP_WD": BASE_DIR})
-    if r.returncode != 0 or not os.path.exists(shortcut_path()):
+        "if (Test-Path $env:NP_ICON) { $s.IconLocation = $env:NP_ICON + ',0' };"
+        "$s.Description = $env:NP_DESC; $s.Save()",
+        {"NP_LNK": path, "NP_TARGET": pythonw(), "NP_ARGS": script, "NP_WD": BASE_DIR,
+         "NP_ICON": ICON, "NP_DESC": description})
+    if r.returncode != 0 or not os.path.exists(path):
         sys.exit("สร้าง shortcut ไม่สำเร็จ:\n" + r.stderr.strip())
+
+
+def message_box(text, error=False):
+    """ใช้แจ้งผู้ใช้ตอนรันจาก shortcut (pythonw ไม่มีหน้าต่างให้ print)"""
+    ctypes.windll.user32.MessageBoxW(None, text, "Network Pulse", 0x10 if error else 0x40)
 
 
 def running_pids():
@@ -91,9 +109,10 @@ def responding(port):
 
 
 def start(port):
+    """คืน True ถ้าเซิร์ฟเวอร์ตอบสนอง (ทำงานอยู่แล้ว หรือเริ่มสำเร็จ)"""
     if responding(port):
         print(f"ทำงานอยู่แล้ว → http://localhost:{port}")
-        return
+        return True
     subprocess.Popen([pythonw(), APP], cwd=BASE_DIR, creationflags=DETACHED,
                      stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                      close_fds=True)
@@ -101,8 +120,16 @@ def start(port):
         time.sleep(0.5)
         if responding(port):
             print(f"เริ่มทำงานเบื้องหลังแล้ว → http://localhost:{port}")
-            return
+            return True
     print(f"ยังไม่ตอบสนอง — ดูข้อความผิดพลาดใน {LOG}")
+    return False
+
+
+def open_page(port):
+    if start(port):
+        webbrowser.open(f"http://localhost:{port}")
+    else:
+        message_box(f"เปิด Network Pulse ไม่สำเร็จ\nดูรายละเอียดใน:\n{LOG}", error=True)
 
 
 def stop():
@@ -120,6 +147,7 @@ def status(port):
     print(f"เปิดพร้อม Windows : {'เปิด' if lnk else 'ปิด'}")
     if lnk:
         print(f"  shortcut       : {shortcut_path()}")
+    print(f"shortcut Desktop  : {'มี' if os.path.exists(desktop_shortcut_path()) else 'ไม่มี'}")
     pids = running_pids()
     if responding(port):
         print(f"ตอนนี้            : ทำงานอยู่ → http://localhost:{port}" + (f"  (PID {', '.join(map(str, pids))})" if pids else ""))
@@ -139,9 +167,15 @@ def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "status"
     port = load_config()["port"]
     if cmd == "on":
-        create_shortcut()
+        create_shortcut(shortcut_path(), f'"{APP}"', "Network Pulse - start with Windows")
         print("ตั้งให้เปิดพร้อม Windows แล้ว (ทำงานเบื้องหลัง ไม่มีหน้าต่าง)")
         start(port)
+    elif cmd == "desktop":
+        path = desktop_shortcut_path()
+        create_shortcut(path, f'"{SELF}" open', "เปิด Network Pulse (เริ่มทำงานถ้ายังไม่ได้เปิด)")
+        print(f"สร้าง shortcut แล้ว: {path}")
+    elif cmd == "open":
+        open_page(port)
     elif cmd == "off":
         path = shortcut_path()
         if os.path.exists(path):
