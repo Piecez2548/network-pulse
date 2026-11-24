@@ -10,8 +10,22 @@
 ```bat
 run.bat
 ```
-หรือ `python app.py` แล้วเปิด http://localhost:8000 — กด Ctrl+C เพื่อหยุด
+เริ่มทำงานเบื้องหลัง (ถ้ายังไม่ได้ทำงาน) แล้วเปิด http://localhost:8000 ให้
+ต้องการดูข้อความแบบมีหน้าต่าง: `python app.py` (กด Ctrl+C เพื่อหยุด)
 กดปุ่ม "เปิดการแจ้งเตือน" มุมขวาบนหนึ่งครั้งเพื่อรับ Browser Notification
+
+### เปิดพร้อม Windows
+
+```bat
+python autostart.py on       :: เปิดพร้อม Windows + เริ่มทำงานทันที (ไม่มีหน้าต่าง)
+python autostart.py status   :: ดูสถานะ
+python autostart.py stop     :: หยุดตัวที่ทำงานเบื้องหลัง
+python autostart.py off      :: เลิกเปิดพร้อม Windows
+```
+- ใช้ shortcut ในโฟลเดอร์ Startup ของผู้ใช้ → ทำงานหลัง login โดยไม่ต้องใช้สิทธิ์ Administrator
+- ทำงานด้วย `pythonw.exe` (ไม่มีหน้าต่าง) ข้อความของโปรแกรมอยู่ใน `data/netpulse.log` (เกิน 1 MB เก็บของเก่าเป็น `.log.1`)
+- เปิดซ้ำไม่ได้ — ถ้ามีตัวหนึ่งใช้พอร์ต 8000 อยู่ ตัวที่สองจะแจ้งแล้วปิดตัวเอง
+- การแจ้งเตือนต้องเปิดหน้าเว็บค้างไว้ในเบราว์เซอร์ (ตัววัดบันทึกข้อมูลตลอดแม้ไม่ได้เปิดหน้าเว็บ)
 
 > หน้าเว็บโหลด Chart.js และฟอนต์จาก CDN จึงต้องมีอินเทอร์เน็ตตอนเปิดหน้า (ตัววัดทำงานได้แม้เน็ตหลุด)
 
@@ -89,6 +103,7 @@ python setup_auth.py --lan on :: เปิดให้มือถือใน W
 
 ```
 app.py                 จุดเริ่มโปรแกรม
+autostart.py           เปิดพร้อม Windows / เริ่ม-หยุดตัวที่ทำงานเบื้องหลัง
 setup_auth.py          ตั้งรหัสผ่าน + TOTP / เปิด-ปิด LAN
 netpulse/auth.py       รหัสผ่าน, TOTP, session, จำกัดการเดารหัส
 netpulse/qr.py         สร้าง QR Code (pure Python) สำหรับแอป Authenticator

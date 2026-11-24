@@ -197,6 +197,12 @@ class ServerTests(unittest.TestCase):
         r, _ = self.req("GET", "/api/auth-status", headers={"Host": f"evil.example:{self.port}"})
         self.assertEqual(r.status, 421)
 
+    def test_second_instance_cannot_share_port(self):
+        cfg = dict(self.cfg, port=self.port)
+        ctx = AppContext(cfg, FakeMonitor(), Auth(cfg))
+        with self.assertRaises(OSError):
+            serve(ctx, "127.0.0.1")
+
     def test_static_path_traversal(self):
         self.assertEqual(self.req("GET", "/static/../config.json")[0].status, 404)
         self.assertEqual(self.req("GET", "/static/..%2fconfig.json")[0].status, 404)

@@ -3,6 +3,7 @@ import json
 import mimetypes
 import os
 import socket
+import sys
 import threading
 import time
 from http.cookies import SimpleCookie
@@ -387,10 +388,20 @@ def make_handler(ctx):
     return Handler
 
 
+class _Server(ThreadingHTTPServer):
+    """บน Windows: SO_REUSEADDR ทำให้หลายโปรเซส bind พอร์ตเดียวกันได้ (เปิดซ้ำ 2 ตัว / ถูกแย่งพอร์ต)
+    จึงปิด reuse และจองพอร์ตแบบ exclusive แทน"""
+    daemon_threads = True
+    allow_reuse_address = sys.platform != "win32"
+
+    def server_bind(self):
+        if sys.platform == "win32" and hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
+
+
 def serve(ctx, host):
-    httpd = ThreadingHTTPServer((host, ctx.cfg["port"]), make_handler(ctx))
-    httpd.daemon_threads = True
-    return httpd
+    return _Server((host, ctx.cfg["port"]), make_handler(ctx))
 
 
 def start_lan_listener(ctx, retry_sec=30):
