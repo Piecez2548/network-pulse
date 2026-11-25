@@ -1,7 +1,7 @@
 # Network Pulse
 
 โปรแกรมเฝ้าการเชื่อมต่ออินเทอร์เน็ตบน Windows แสดงผลเป็นเว็บในเครื่อง (http://localhost:8000)
-ทำงานเฉพาะตอนเปิดคอมและเปิดโปรแกรมไว้ — **Phase 2**
+ทำงานเฉพาะตอนเปิดคอมและเปิดโปรแกรมไว้ — **v1.2**
 
 ## เริ่มใช้งาน
 
@@ -45,7 +45,7 @@ python autostart.py desktop  :: สร้าง shortcut "Network Pulse" บน 
 
 ## ตั้งค่า
 
-**แก้จากหน้าเว็บ 09 Settings ได้เลย** — บันทึกลง `config.json` ให้ และมีผลทันที
+**แก้จากหน้าเว็บ 11 Settings ได้เลย** — บันทึกลง `config.json` ให้ และมีผลทันที
 ยกเว้นรายการเป้าหมายที่ต้องเปิดโปรแกรมใหม่ (หน้าเว็บจะขึ้นเตือน) · ทุกการแก้ถูกบันทึกไว้ในหน้า Events
 
 ค่าที่เกี่ยวกับความปลอดภัย (รหัสผ่าน, TOTP, `lan_access`, `host`/`port`) แก้จากเว็บไม่ได้ ต้องใช้ `setup_auth.py`
@@ -65,6 +65,9 @@ python autostart.py desktop  :: สร้าง shortcut "Network Pulse" บน 
 | `lan_access` | `false` | เปิดให้อุปกรณ์ใน Wi-Fi เดียวกันเข้าได้ (ต้องตั้งรหัสก่อน) |
 | `lan_ip` | `"auto"` | IP ของเครื่องนี้ในวง LAN ที่จะเปิดพอร์ต |
 | `session_days` | `30` | login ค้างไว้ได้กี่วัน |
+| `speedtest_interval_hours` | `0` | Speed test อัตโนมัติทุกกี่ชั่วโมง (`0` = ปิด กดวัดเอง) |
+| `plan_down_mbps` / `plan_up_mbps` | `0` | ความเร็วตามแพ็กเกจ ใช้เทียบ % ในหน้า Speed Test และรายงาน (`0` = ไม่ระบุ) |
+| `lan_scan_interval_min` | `0` | สแกนอุปกรณ์ในวง LAN อัตโนมัติทุกกี่นาที (`0` = ปิด กดสแกนเอง) |
 | `auth` | ว่าง | hash รหัสผ่าน + TOTP secret — **อย่าแก้เอง** ใช้ `setup_auth.py` |
 
 ## Login และการเข้าจากมือถือ (Phase 2)
@@ -73,7 +76,7 @@ python autostart.py desktop  :: สร้าง shortcut "Network Pulse" บน 
 python setup_auth.py          :: ตั้งรหัสผ่าน (อย่างน้อย 10 ตัว) + TOTP
 python setup_auth.py --lan on :: เปิดให้มือถือใน Wi-Fi เดียวกันเข้าได้
 ```
-แล้วเปิดโปรแกรมใหม่ — หน้า 08 Security จะแสดงที่อยู่สำหรับมือถือ (เช่น `http://192.168.1.34:8000`)
+แล้วเปิดโปรแกรมใหม่ — หน้า 10 Security จะแสดงที่อยู่สำหรับมือถือ (เช่น `http://192.168.1.34:8000`)
 
 - **TOTP:** สคริปต์จะแสดง **QR Code ในหน้าต่าง terminal** ให้สแกนด้วยแอป Authenticator (มีคีย์ให้พิมพ์เองเป็นทางสำรอง)
   แล้วให้ยืนยันด้วยรหัส 6 หลักก่อนบันทึก — ยืนยันเสร็จจะล้างหน้าจอทันที
@@ -117,7 +120,11 @@ netpulse/monitor.py    เธรดวัด + ตรวจหลุด / latenc
 netpulse/db.py         SQLite: samples, heartbeat, hourly, events
 netpulse/traffic.py    อ่านปริมาณ Download/Upload ของการ์ดเครือข่าย (iphlpapi ผ่าน ctypes)
 netpulse/tools.py      Ping / Traceroute / DNS / Public IP ของหน้า Network Tools
-netpulse/server.py     http.server: หน้าเว็บ + /api/live, /api/overview, /api/history, /api/events, /api/tools/*
+netpulse/speedtest.py  Speed test กับ speed.cloudflare.com + ตั้งเวลาอัตโนมัติ
+netpulse/report.py     รายงานรายวัน / รายการที่หลุด / แยกสาเหตุ ISP กับในบ้าน
+netpulse/lanscan.py    สแกนอุปกรณ์ในวง LAN ด้วย ARP (iphlpapi.SendARP) และจำ MAC ไว้
+netpulse/server.py     http.server: หน้าเว็บ + /api/live, /api/overview, /api/history, /api/events, /api/tools/*,
+                       /api/speedtest, /api/report, /api/devices
 static/                หน้าเว็บ (HTML/CSS/JS + Chart.js จาก CDN)
 tests/                 python -m unittest discover -s tests
 ```
@@ -128,11 +135,19 @@ tests/                 python -m unittest discover -s tests
   Uptime 24 ชม. (เทียบ 24 ชม. ก่อนหน้า), Response ของ router, กราฟ 1m–24h, Connection Path, ปริมาณ Download/Upload ของการ์ดเครือข่าย
 - **02 Live Monitor** — กราฟสดและ ping log
 - **03 Network Tools** — Ping, Traceroute, DNS Lookup, IP Info (ปุ่มตรวจ Public IP ถาม api.ipify.org เฉพาะเมื่อกด)
-- **04 Topology** — แผนผังเครื่องนี้ → router → อินเทอร์เน็ต → เป้าหมาย พร้อม traceroute
-- **05 History & Logs** — วันนี้ / 24 ชม. / 7 วัน / 30 วัน / เลือกวันเอง
-- **06 Events & Alerts** — ตัวเลขสีแดงที่เมนูและจุดแดงที่กระดิ่ง = การหลุด / latency สูง / ล็อก login ที่ยังไม่ได้ดู
-- **07 Compare** — วันนี้ vs เมื่อวาน, สัปดาห์นี้ vs สัปดาห์ที่แล้ว (ช่วงเวลาเดียวกัน), 7/30 วัน vs ช่วงก่อนหน้า, กำหนดเอง
-- **08 Security** — สถานะการป้องกัน, ที่อยู่สำหรับมือถือ, อุปกรณ์ที่ login อยู่
-- **09 Settings** — ระยะวัด, เกณฑ์แจ้งเตือน, เป้าหมาย (สูงสุด 8), อายุข้อมูล, อายุการ login
+- **04 Speed Test** — วัดดาวน์โหลด/อัปโหลด/ping จริงกับ speed.cloudflare.com (ราว 20 วินาที ใช้เน็ต 100–400 MB ต่อครั้ง),
+  เทียบ % กับความเร็วแพ็กเกจ, กราฟและประวัติย้อนหลัง · วัดอัตโนมัติตั้งได้ที่ Settings (ค่าเริ่มต้นปิด)
+- **05 Topology** — แผนผังเครื่องนี้ → router → อินเทอร์เน็ต → เป้าหมาย พร้อม traceroute
+  และ **อุปกรณ์ในวง LAN**: กดสแกนเพื่อดู IP / MAC / ชื่อของทุกเครื่องที่ต่ออยู่, ตั้งชื่อ, กด "รู้จักแล้ว",
+  เครื่องที่ไม่เคยเห็นจะขึ้นเป็น "อุปกรณ์ใหม่" ที่กระดิ่ง · สแกนเฉพาะวงในบ้าน — เครือข่ายของที่ทำงาน/มหาวิทยาลัยอาจไม่อนุญาตให้สแกน
+- **06 History & Logs** — วันนี้ / 24 ชม. / 7 วัน / 30 วัน / เลือกวันเอง
+- **07 Events & Alerts** — ตัวเลขสีแดงที่เมนูและจุดแดงที่กระดิ่ง = การหลุด / latency สูง / อุปกรณ์ใหม่ / ล็อก login ที่ยังไม่ได้ดู
+- **08 Compare** — วันนี้ vs เมื่อวาน, สัปดาห์นี้ vs สัปดาห์ที่แล้ว (ช่วงเวลาเดียวกัน), 7/30 วัน vs ช่วงก่อนหน้า, กำหนดเอง
+- **09 Reports** — รายงานไว้แนบตอนแจ้งปัญหากับ ISP: Uptime, จำนวนครั้ง/เวลาที่หลุด (แยกว่าเป็นที่ ISP หรือเราเตอร์ในบ้าน),
+  latency, packet loss, ความเร็วเทียบแพ็กเกจ, สรุปรายวัน · ปุ่ม "พิมพ์ / บันทึก PDF" และ "ดาวน์โหลด CSV" (เปิดใน Excel ได้)
+- **10 Security** — สถานะการป้องกัน, ที่อยู่สำหรับมือถือ, อุปกรณ์ที่ login อยู่
+- **11 Settings** — ระยะวัด, เกณฑ์แจ้งเตือน, เป้าหมาย (สูงสุด 8), อายุข้อมูล, อายุการ login, Speed test อัตโนมัติ, ความเร็วแพ็กเกจ, สแกน LAN อัตโนมัติ
+
+ทุกอย่างแสดงในหน้าเว็บเท่านั้น — ไม่มีการส่งแจ้งเตือนออกไปภายนอก
 
 ช่องค้นหาด้านบน (Ctrl + K): พิมพ์ชื่อเมนู หรือพิมพ์ IP/โดเมนเพื่อ Ping / Traceroute / DNS ได้ทันที

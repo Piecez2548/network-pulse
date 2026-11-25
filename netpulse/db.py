@@ -19,6 +19,15 @@ CREATE TABLE IF NOT EXISTS sessions(
     id INTEGER PRIMARY KEY AUTOINCREMENT, token_hash TEXT NOT NULL UNIQUE,
     created INTEGER NOT NULL, last_seen INTEGER NOT NULL, expires INTEGER NOT NULL,
     ip TEXT, ua TEXT);
+CREATE TABLE IF NOT EXISTS speedtests(
+    id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, trigger TEXT NOT NULL,
+    down_bps REAL, up_bps REAL, ping_ms REAL, jitter_ms REAL, server TEXT, error TEXT);
+CREATE INDEX IF NOT EXISTS idx_speedtests_ts ON speedtests(ts);
+CREATE TABLE IF NOT EXISTS devices(
+    mac TEXT PRIMARY KEY, ip TEXT, hostname TEXT, name TEXT, known INTEGER NOT NULL DEFAULT 0,
+    first_seen INTEGER NOT NULL, last_seen INTEGER NOT NULL) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS lan_scans(
+    ts INTEGER PRIMARY KEY, subnet TEXT, found INTEGER NOT NULL, ms INTEGER);
 """
 
 
@@ -250,3 +259,133 @@ def session_delete(conn, sid=None, except_id=None):
         if sid is not None:
             return conn.execute("DELETE FROM sessions WHERE id = ?", (sid,)).rowcount
         return conn.execute("DELETE FROM sessions WHERE id != ?", (except_id or -1,)).rowcount
+
+
+# ---------- speed test ----------
+_ST_COLS = ("id", "ts", "trigger", "down_bps", "up_bps", "ping_ms", "jitter_ms", "server", "error")
+
+
+def speedtest_add(conn, ts, trigger, down_bps=None, up_bps=None, ping_ms=None, jitter_ms=None,
+                  server=None, error=None):
+    with conn:
+        return conn.execute(
+            "INSERT INTO speedtests(ts, trigger, down_bps, up_bps, ping_ms, jitter_ms, server, error) "
+            "VALUES (?,?,?,?,?,?,?,?)",
+            (ts, trigger, down_bps, up_bps, ping_ms, jitter_ms, server, error)).lastrowid
+
+
+def speedtest_list(conn, start=None, end=None, limit=500):
+    sql, args = "SELECT " + ", ".join(_ST_COLS) + " FROM speedtests WHERE 1=1", []
+    if start is not None:
+        sql += " AND ts >= ?"
+        args.append(start)
+    if end is not None:
+        sql += " AND ts < ?"
+        args.append(end)
+    sql += " ORDER BY ts DESC LIMIT ?"
+    args.append(limit)
+    return [dict(zip(_ST_COLS, r)) for r in conn.execute(sql, args)]
+
+
+def speedtest_last_ts(conn):
+    return conn.execute("SELECT MAX(ts) FROM speedtests").fetchone()[0]
+
+
+# ---------- รายงาน ----------
+def hourly_stats(conn, start, end):
+    """สถิติรายชั่วโมงต่อเป้าหมาย จากข้อมูลดิบ + ข้อมูลรายชั่วโมงที่ rollup แล้ว
+    คืน {(hour, target): [n, ok_n, sum_latency, max_latency]}"""
+    out = {}
+
+    def add(hour, target, n, ok_n, sum_lat, mx):
+        cell = out.setdefault((hour, target), [0, 0, 0.0, None])
+        cell[0] += n
+        cell[1] += ok_n or 0
+        cell[2] += sum_lat or 0.0
+        if mx is not None and (cell[3] is None or mx > cell[3]):
+            cell[3] = mx
+
+    for row in conn.execute(
+            """SELECT (ts/3600)*3600, target, COUNT(*), SUM(ok), SUM(latency), MAX(latency)
+               FROM samples WHERE ts >= ? AND ts < ? GROUP BY 1, 2""", (start, end)):
+        add(*row)
+    for hour, target, n, ok_n, avg, mx in conn.execute(
+            "SELECT hour, target, n, ok_n, avg_ms, max_ms FROM hourly WHERE hour >= ? AND hour < ?",
+            (start, end)):
+        add(hour, target, n, ok_n, (avg or 0.0) * (ok_n or 0), mx)
+    return out
+
+
+def beats_by_hour(conn, start, end):
+    out = dict(conn.execute("SELECT hour, beats FROM hourly_beats WHERE hour >= ? AND hour < ?", (start, end)))
+    for hour, n in conn.execute(
+            "SELECT (ts/3600)*3600, COUNT(*) FROM heartbeat WHERE ts >= ? AND ts < ? GROUP BY 1", (start, end)):
+        out[hour] = out.get(hour, 0) + n
+    return out
+
+
+def events_of_kinds(conn, kinds, start, end):
+    marks = ",".join("?" * len(kinds))
+    cols = ("id", "ts", "ts_end", "kind", "target", "message")
+    return [dict(zip(cols, r)) for r in conn.execute(
+        f"SELECT {', '.join(cols)} FROM events WHERE kind IN ({marks}) AND ts >= ? AND ts < ? ORDER BY ts, id",
+        (*kinds, start, end))]
+
+
+def last_event_before(conn, kinds, target, ts):
+    marks = ",".join("?" * len(kinds))
+    row = conn.execute(
+        f"SELECT kind, ts FROM events WHERE kind IN ({marks}) AND target IS ? AND ts < ? ORDER BY ts DESC, id DESC LIMIT 1",
+        (*kinds, target, ts)).fetchone()
+    return row
+
+
+# ---------- อุปกรณ์ในวง LAN ----------
+_DEV_COLS = ("mac", "ip", "hostname", "name", "known", "first_seen", "last_seen")
+
+
+def devices_upsert(conn, now, found):
+    """found: [{"mac", "ip", "hostname"}] — คืนรายการ MAC ที่ไม่เคยเห็นมาก่อน"""
+    new = []
+    with conn:
+        for d in found:
+            row = conn.execute("SELECT hostname FROM devices WHERE mac = ?", (d["mac"],)).fetchone()
+            if row is None:
+                conn.execute("INSERT INTO devices(mac, ip, hostname, first_seen, last_seen) VALUES (?,?,?,?,?)",
+                             (d["mac"], d["ip"], d.get("hostname"), now, now))
+                new.append(d["mac"])
+            else:
+                conn.execute("UPDATE devices SET ip = ?, hostname = COALESCE(?, hostname), last_seen = ? WHERE mac = ?",
+                             (d["ip"], d.get("hostname"), now, d["mac"]))
+    return new
+
+
+def devices_list(conn):
+    return [dict(zip(_DEV_COLS, r)) for r in conn.execute(
+        f"SELECT {', '.join(_DEV_COLS)} FROM devices ORDER BY last_seen DESC, ip")]
+
+
+def device_update(conn, mac, name=None, known=None):
+    with conn:
+        if name is not None:
+            conn.execute("UPDATE devices SET name = ? WHERE mac = ?", (name or None, mac))
+        if known is not None:
+            conn.execute("UPDATE devices SET known = ? WHERE mac = ?", (1 if known else 0, mac))
+        return conn.execute("SELECT COUNT(*) FROM devices WHERE mac = ?", (mac,)).fetchone()[0]
+
+
+def device_delete(conn, mac):
+    with conn:
+        return conn.execute("DELETE FROM devices WHERE mac = ?", (mac,)).rowcount
+
+
+def lan_scan_add(conn, ts, subnet, found, ms):
+    with conn:
+        conn.execute("INSERT OR REPLACE INTO lan_scans(ts, subnet, found, ms) VALUES (?,?,?,?)",
+                     (ts, subnet, found, ms))
+        conn.execute("DELETE FROM lan_scans WHERE ts < ?", (ts - 90 * 86400,))
+
+
+def lan_scan_last(conn):
+    row = conn.execute("SELECT ts, subnet, found, ms FROM lan_scans ORDER BY ts DESC LIMIT 1").fetchone()
+    return dict(zip(("ts", "subnet", "found", "ms"), row)) if row else None

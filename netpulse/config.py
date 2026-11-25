@@ -28,7 +28,15 @@ DEFAULTS = {
     "lan_ip": "auto",           # IP ของเครื่องนี้ในวง LAN ("auto" = หาเอง)
     "session_days": 30,
     "auth": {"password_hash": "", "totp_secret": ""},  # ตั้งด้วย: python setup_auth.py
+    # ---- v1.2 ----
+    "speedtest_interval_hours": 0,   # Speed test อัตโนมัติ (0 = ปิด กดเองในหน้าเว็บ)
+    "plan_down_mbps": 0,             # ความเร็วตามแพ็กเกจ (0 = ไม่ระบุ)
+    "plan_up_mbps": 0,
+    "lan_scan_interval_min": 0,      # สแกนอุปกรณ์ในวง LAN อัตโนมัติ (0 = ปิด กดสแกนเองในหน้าเว็บ)
+                                     # เปิดเฉพาะวงในบ้าน — วงของที่ทำงาน/มหาวิทยาลัยอาจไม่อนุญาตให้สแกน
 }
+
+_NONNEG_INTS = ("speedtest_interval_hours", "plan_down_mbps", "plan_up_mbps", "lan_scan_interval_min")
 
 _POSITIVE_INTS = (
     "port", "interval_sec", "ping_timeout_ms", "down_after_failures",
@@ -86,6 +94,8 @@ def load_config(path=CONFIG_PATH):
         cfg[key] = int(cfg[key])
         if cfg[key] <= 0:
             raise ValueError(f"{key} ต้องมากกว่า 0")
+    for key in _NONNEG_INTS:
+        cfg[key] = max(0, int(cfg[key]))
     cfg["targets"] = _normalize_targets(cfg["targets"])
     cfg["lan_access"] = bool(cfg.get("lan_access"))
     auth = cfg.get("auth") or {}

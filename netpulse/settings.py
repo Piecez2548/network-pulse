@@ -18,6 +18,10 @@ FIELDS = {
     "latency_recover_consecutive": (1, 60, "ปกติกี่รอบจึงหายเตือน"),
     "raw_retention_days": (1, 90, "เก็บข้อมูลรายรอบ (วัน)"),
     "session_days": (1, 365, "อายุการเข้าสู่ระบบ (วัน)"),
+    "speedtest_interval_hours": (0, 168, "Speed test อัตโนมัติทุกกี่ชั่วโมง (0 = ปิด)"),
+    "plan_down_mbps": (0, 10000, "ความเร็วแพ็กเกจ ดาวน์โหลด (Mbps, 0 = ไม่ระบุ)"),
+    "plan_up_mbps": (0, 10000, "ความเร็วแพ็กเกจ อัปโหลด (Mbps, 0 = ไม่ระบุ)"),
+    "lan_scan_interval_min": (0, 1440, "สแกนอุปกรณ์ในบ้านทุกกี่นาที (0 = ปิด)"),
 }
 MAX_TARGETS = 8
 MAX_NAME = 40

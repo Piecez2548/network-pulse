@@ -10,7 +10,9 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-from . import __version__, db, tools
+import re
+
+from . import __version__, db, report, tools
 from . import settings as settings_mod
 from .auth import COOKIE_NAME, is_lan_client
 from .config import BASE_DIR, CONFIG_PATH, DEFAULTS
@@ -23,6 +25,7 @@ CSP = ("default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; "
        "font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; "
        "frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
 MAX_BODY = 8192
+_MAC_RE = re.compile(r"^[0-9a-f]{2}(:[0-9a-f]{2}){5}$")
 PUBLIC_API = {"/api/login", "/api/auth-status"}
 
 
@@ -59,11 +62,13 @@ def detect_lan_ip(probe="8.8.8.8"):
 
 
 class AppContext:
-    def __init__(self, cfg, monitor, auth, config_path=CONFIG_PATH, traffic=None):
+    def __init__(self, cfg, monitor, auth, config_path=CONFIG_PATH, traffic=None, speedtest=None, lanscan=None):
         self.cfg = cfg
         self.monitor = monitor
         self.auth = auth
         self.traffic = traffic
+        self.speedtest = speedtest
+        self.lanscan = lanscan
         self.config_path = config_path
         self.overview_cache = (0.0, None)
         self.running_targets = settings_mod.targets_signature(cfg["targets"])
@@ -136,6 +141,31 @@ def make_handler(ctx):
         return {"hostname": socket.gethostname(), "local_ip": detect_lan_ip(), "gateway": gw,
                 "interface": tr.get("interface"), "link_bps": tr.get("speed_bps"),
                 "client_ip": h.client_address[0]}
+
+    def api_speedtest(h, conn, qs):
+        return {"status": ctx.speedtest.status() if ctx.speedtest else None,
+                "tests": db.speedtest_list(conn, limit=_int(qs, "limit", 100, 1, 1000)),
+                "plan": {"down_mbps": cfg["plan_down_mbps"], "up_mbps": cfg["plan_up_mbps"]},
+                "interval_hours": cfg["speedtest_interval_hours"], "server": "speed.cloudflare.com"}
+
+    def api_report(h, conn, qs):
+        now = int(time.time())
+        end = _int(qs, "end", now)
+        start = _int(qs, "start", end - 7 * 86400)
+        if end - start < 3600 or end - start > 400 * 86400:
+            raise ApiError("ช่วงเวลาไม่ถูกต้อง")
+        tz = _int(qs, "tz", 0, lo=-14 * 3600, hi=14 * 3600)
+        snap = {t["id"]: t["host"] for t in monitor.snapshot()["targets"]}
+        rcfg = dict(cfg, targets=[dict(t, resolved=snap.get(t["id"])) for t in cfg["targets"]])
+        return report.build(conn, rcfg, start, end, now, tz)
+
+    def api_devices(h, conn, qs):
+        snap = monitor.snapshot()
+        return {"status": ctx.lanscan.status() if ctx.lanscan else None,
+                "last_scan": db.lan_scan_last(conn), "devices": db.devices_list(conn),
+                "self_ip": detect_lan_ip(),
+                "gateway_ip": next((t["host"] for t in snap["targets"] if t["kind"] == "gateway"), None),
+                "interval_min": cfg["lan_scan_interval_min"]}
 
     def api_history(h, conn, qs):
         now = int(time.time())
@@ -290,14 +320,54 @@ def make_handler(ctx):
     def post_tool_public_ip(h, conn, body):
         return _tool(lambda: {"ip": tools.public_ip()})
 
+    def post_speedtest_run(h, conn, body):
+        if not ctx.speedtest:
+            raise ApiError("ไม่ได้เปิดใช้ speed test")
+        if not ctx.speedtest.start("manual"):
+            return 409, {"error": "กำลังวัดอยู่แล้ว"}, None
+        return 200, {"ok": True, "status": ctx.speedtest.status()}, None
+
+    def post_devices_scan(h, conn, body):
+        if not ctx.lanscan:
+            raise ApiError("ไม่ได้เปิดใช้การสแกน")
+        if not ctx.lanscan.start("manual"):
+            return 409, {"error": "กำลังสแกนอยู่แล้ว"}, None
+        return 200, {"ok": True}, None
+
+    def _mac(body):
+        mac = str(body.get("mac", "")).strip().lower()
+        if not _MAC_RE.match(mac):
+            raise ApiError("MAC ไม่ถูกต้อง")
+        return mac
+
+    def post_devices_update(h, conn, body):
+        mac = _mac(body)
+        name = body.get("name")
+        if name is not None:
+            name = str(name).strip()
+            if len(name) > settings_mod.MAX_NAME:
+                raise ApiError(f"ชื่อยาวได้ไม่เกิน {settings_mod.MAX_NAME} ตัวอักษร")
+        known = body.get("known")
+        if known is not None and not isinstance(known, bool):
+            raise ApiError("known ต้องเป็น true/false")
+        if not db.device_update(conn, mac, name=name, known=known):
+            raise ApiError("ไม่พบอุปกรณ์นี้", 404)
+        return 200, {"ok": True}, None
+
+    def post_devices_delete(h, conn, body):
+        return 200, {"ok": True, "removed": db.device_delete(conn, _mac(body))}, None
+
     get_routes = {"/api/live": api_live, "/api/history": api_history, "/api/events": api_events,
                   "/api/config": api_config, "/api/auth-status": api_auth_status,
                   "/api/sessions": api_sessions, "/api/settings": api_settings,
-                  "/api/overview": api_overview, "/api/tools/info": api_tool_info}
+                  "/api/overview": api_overview, "/api/tools/info": api_tool_info,
+                  "/api/speedtest": api_speedtest, "/api/report": api_report, "/api/devices": api_devices}
     post_routes = {"/api/login": post_login, "/api/logout": post_logout,
                    "/api/sessions/revoke": post_revoke, "/api/settings": post_settings,
                    "/api/tools/ping": post_tool_ping, "/api/tools/trace": post_tool_trace,
-                   "/api/tools/dns": post_tool_dns, "/api/tools/public-ip": post_tool_public_ip}
+                   "/api/tools/dns": post_tool_dns, "/api/tools/public-ip": post_tool_public_ip,
+                   "/api/speedtest/run": post_speedtest_run, "/api/devices/scan": post_devices_scan,
+                   "/api/devices/update": post_devices_update, "/api/devices/delete": post_devices_delete}
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "NetworkPulse/" + __version__

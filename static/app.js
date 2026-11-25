@@ -41,6 +41,12 @@ const ICONS = {
   prompt: '<path d="m4 7 5 5-5 5M12 17h8"/>',
   nodes: '<circle cx="12" cy="4.5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="12" cy="19.5" r="2"/><path d="M10.5 6 6.5 10.5M13.5 6l4 4.5M6.5 13.5l4 4.5M17.5 13.5l-4 4.5"/>',
   traffic: '<path d="M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4"/>',
+  speed: '<path d="M3.5 18a9 9 0 1 1 17 0"/><path d="m12 14.5 4.5-5.5"/><circle cx="12" cy="14.5" r="1.3"/>',
+  report: '<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 12.5h7M9 16.5h5"/>',
+  device: '<rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18h2"/>',
+  print: '<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="1.5"/><path d="M7 14h10v7H7z"/>',
+  filedown: '<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M12 11v6.5M9.2 14.8 12 17.5l2.8-2.7"/>',
+  scan: '<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16"/>',
 };
 const icon = (id, cls = '') => `<svg${cls ? ` class="${cls}"` : ''} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[id] || ''}</svg>`;
 
@@ -48,12 +54,14 @@ const NAV = [
   { id: 'overview', num: '01', label: 'Overview', crumb: 'ภาพรวมเครือข่าย' },
   { id: 'live', num: '02', label: 'Live Monitor', crumb: 'กราฟ latency แบบสด' },
   { id: 'tools', num: '03', label: 'Network Tools', crumb: 'Ping · Traceroute · DNS · IP' },
-  { id: 'topology', num: '04', label: 'Topology', crumb: 'เส้นทางจากเครื่องนี้ถึงอินเทอร์เน็ต' },
-  { id: 'history', num: '05', label: 'History & Logs', crumb: 'ข้อมูลย้อนหลัง' },
-  { id: 'events', num: '06', label: 'Events & Alerts', crumb: 'บันทึกเหตุการณ์และการแจ้งเตือน', badge: true },
-  { id: 'compare', num: '07', label: 'Compare', crumb: 'เทียบช่วงเวลา' },
-  { id: 'security', num: '08', label: 'Security', crumb: 'การเข้าสู่ระบบและอุปกรณ์' },
-  { id: 'settings', num: '09', label: 'Settings', crumb: 'ตั้งค่าการวัดและการแจ้งเตือน', sep: true },
+  { id: 'speed', num: '04', label: 'Speed Test', crumb: 'วัดความเร็วดาวน์โหลด / อัปโหลดจริง' },
+  { id: 'topology', num: '05', label: 'Topology', crumb: 'เส้นทางถึงอินเทอร์เน็ต · อุปกรณ์ในวง LAN' },
+  { id: 'history', num: '06', label: 'History & Logs', crumb: 'ข้อมูลย้อนหลัง' },
+  { id: 'events', num: '07', label: 'Events & Alerts', crumb: 'บันทึกเหตุการณ์และการแจ้งเตือน', badge: true },
+  { id: 'compare', num: '08', label: 'Compare', crumb: 'เทียบช่วงเวลา' },
+  { id: 'report', num: '09', label: 'Reports', crumb: 'รายงานคุณภาพอินเทอร์เน็ต สำหรับแจ้ง ISP' },
+  { id: 'security', num: '10', label: 'Security', crumb: 'การเข้าสู่ระบบและอุปกรณ์' },
+  { id: 'settings', num: '11', label: 'Settings', crumb: 'ตั้งค่าการวัดและการแจ้งเตือน', sep: true },
 ];
 
 const KIND = {
@@ -65,9 +73,13 @@ const KIND = {
   auth: { label: 'เข้าสู่ระบบ', title: 'มีการเข้าสู่ระบบ', color: C.primary, dot: 'dot-info' },
   auth_lock: { label: 'ล็อก login', title: 'ใส่รหัสผิดหลายครั้ง', color: C.crit, dot: 'dot-crit' },
   settings: { label: 'ตั้งค่า', title: 'แก้การตั้งค่า', color: C.text, dot: 'dot-info' },
+  speedtest: { label: 'Speed test', title: 'Speed test เสร็จแล้ว', color: C.primary, dot: 'dot-info' },
+  new_device: { label: 'อุปกรณ์ใหม่', title: 'พบอุปกรณ์ใหม่ในวง LAN', color: C.warn, dot: 'dot-warn' },
+  lan_scan: { label: 'สแกน LAN', title: 'สแกนอุปกรณ์ในวง LAN', color: C.primary, dot: 'dot-info' },
+  error: { label: 'ผิดพลาด', title: 'ทำไม่สำเร็จ', color: C.crit, dot: 'dot-crit' },
 };
-const QUIET_KINDS = new Set(['gap', 'auth', 'settings']);  // แสดงเป็น toast เท่านั้น ไม่ส่ง Browser Notification
-const ALERT_KINDS = new Set(['down', 'high_latency', 'auth_lock']);  // นับเป็น "ยังไม่ได้อ่าน" ที่กระดิ่ง
+const QUIET_KINDS = new Set(['gap', 'auth', 'settings', 'speedtest', 'lan_scan']);  // แสดงเป็น toast เท่านั้น ไม่ส่ง Browser Notification
+const ALERT_KINDS = new Set(['down', 'high_latency', 'auth_lock', 'new_device']);  // นับเป็น "ยังไม่ได้อ่าน" ที่กระดิ่ง
 const STATUS_TEXT = { online: 'Online', degraded: 'Degraded', offline: 'Offline', unknown: 'Unknown' };
 const STATUS_TH = { online: 'ออนไลน์', degraded: 'ไม่เสถียร', offline: 'ออฟไลน์', unknown: 'ไม่ทราบสถานะ' };
 
@@ -551,7 +563,7 @@ async function poll() {
 async function loadConfig() {
   try {
     S.cfg = await getJSON('/api/config');
-    $('#side-ver').textContent = `v${S.cfg.version}  •  Phase 2`;
+    $('#side-ver').textContent = `v${S.cfg.version}`;
     $('#logout-btn').hidden = !S.cfg.auth_enabled;
     const lan = S.cfg.lan;
     $('#side-lan').textContent = lan.bound ? `มือถือ: ${lan.ip}:${S.cfg.listen.split(':').pop()}` : '';
@@ -1239,7 +1251,7 @@ PAGES.events = () => {
   const load = async () => {
     try {
       const d = await getJSON('/api/events?limit=500');
-      const groups = { all: null, down: ['down', 'up'], latency: ['high_latency', 'latency_ok'], gap: ['gap'], sec: ['auth', 'auth_lock', 'settings'] };
+      const groups = { all: null, down: ['down', 'up'], latency: ['high_latency', 'latency_ok'], gap: ['gap'], net: ['speedtest', 'new_device', 'lan_scan'], sec: ['auth', 'auth_lock', 'settings'] };
       const list = d.events.filter((e) => !groups[filter] || groups[filter].includes(e.kind));
       $('#ev-table').innerHTML = `<thead><tr><th>เวลา</th><th>ประเภท</th><th>เป้าหมาย</th><th>รายละเอียด</th></tr></thead>
         <tbody>${list.length ? list.map((e) => `<tr>
@@ -1257,7 +1269,7 @@ PAGES.events = () => {
           <div class="card-head">
             <div><div class="card-title">บันทึกเหตุการณ์</div><div class="card-sub">หลุดเมื่อไม่ตอบติดกัน ${S.cfg?.down_after_failures ?? 3} ครั้ง · latency สูงเมื่อเกิน ${thr()} ms ติดกัน ${S.cfg?.latency_consecutive ?? 5} รอบ</div></div>
             <div class="seg" id="ev-filter">
-              <button data-f="all" class="active">ทั้งหมด</button><button data-f="down">หลุด/กลับมา</button><button data-f="latency">Latency</button><button data-f="gap">ไม่มีข้อมูล</button><button data-f="sec">ระบบ/ความปลอดภัย</button>
+              <button data-f="all" class="active">ทั้งหมด</button><button data-f="down">หลุด/กลับมา</button><button data-f="latency">Latency</button><button data-f="gap">ไม่มีข้อมูล</button><button data-f="net">Speed test/อุปกรณ์</button><button data-f="sec">ระบบ/ความปลอดภัย</button>
             </div>
           </div>
           <div class="tbl-wrap"><table class="tbl" id="ev-table"></table></div>
@@ -1564,9 +1576,11 @@ PAGES.settings = () => {
     { title: 'การวัด', sub: 'มีผลตั้งแต่รอบถัดไป', keys: ['interval_sec', 'ping_timeout_ms'] },
     { title: 'การแจ้งเตือน', sub: 'มีผลทันที', keys: ['down_after_failures', 'latency_threshold_ms', 'latency_consecutive', 'latency_recover_consecutive'] },
     { title: 'ข้อมูลและการเข้าสู่ระบบ', sub: 'มีผลทันที', keys: ['raw_retention_days', 'session_days'] },
+    { title: 'Speed test และอุปกรณ์ในบ้าน', sub: 'มีผลทันที · Speed test แต่ละครั้งใช้เน็ตราว 100–400 MB', keys: ['speedtest_interval_hours', 'plan_down_mbps', 'plan_up_mbps', 'lan_scan_interval_min'] },
   ];
   const UNITS = { interval_sec: 'วินาที', ping_timeout_ms: 'ms', down_after_failures: 'ครั้ง', latency_threshold_ms: 'ms',
-    latency_consecutive: 'รอบ', latency_recover_consecutive: 'รอบ', raw_retention_days: 'วัน', session_days: 'วัน' };
+    latency_consecutive: 'รอบ', latency_recover_consecutive: 'รอบ', raw_retention_days: 'วัน', session_days: 'วัน',
+    speedtest_interval_hours: 'ชม.', plan_down_mbps: 'Mbps', plan_up_mbps: 'Mbps', lan_scan_interval_min: 'นาที' };
 
   const val = (k) => Number($(`#st-${k}`)?.value);
   function help(k) {
@@ -1580,6 +1594,10 @@ PAGES.settings = () => {
       case 'latency_recover_consecutive': return 'กันการเตือนสลับไปมาเมื่อ latency แกว่งรอบ ๆ เกณฑ์';
       case 'raw_retention_days': return 'ข้อมูลเก่ากว่านี้จะถูกรวมเป็นค่าเฉลี่ยรายชั่วโมง (ลดค่าแล้วย้อนกลับไม่ได้)';
       case 'session_days': return 'login ค้างไว้ได้นานเท่านี้ก่อนต้องใส่รหัสใหม่ (มีผลกับการ login ครั้งถัดไป)';
+      case 'speedtest_interval_hours': return val(k) > 0 ? `วัดเองทุก ${val(k)} ชม. (วันละ ~${Math.ceil(24 / val(k))} ครั้ง) · ระหว่างวัด latency จะสูงขึ้นชั่วคราว` : 'ปิด — กดวัดเองที่หน้า Speed Test';
+      case 'plan_down_mbps': return 'ใช้เทียบว่าได้ความเร็วกี่ % ของที่จ่าย (0 = ไม่ระบุ)';
+      case 'plan_up_mbps': return 'ดูได้จากใบแจ้งหนี้หรือหน้าเว็บของผู้ให้บริการ';
+      case 'lan_scan_interval_min': return val(k) > 0 ? 'เปิดเฉพาะวงในบ้าน — เครือข่ายที่ทำงาน/มหาวิทยาลัยอาจไม่อนุญาตให้สแกน' : 'ปิด — กดสแกนเองที่หน้า Topology';
       default: return '';
     }
   }
@@ -1720,6 +1738,7 @@ PAGES.settings = () => {
           <div id="st-targets"></div>
           <div class="set-err" id="st-terr-all" hidden></div>
         </div>
+        <div class="card mt"><div class="card-head"><div class="card-title">${GROUPS[3].title}</div><div class="card-sub">${GROUPS[3].sub}</div></div><div id="st-group-3" class="set-grid2"></div></div>
         <div class="grid two-col mt">
           <div class="card"><div class="card-head"><div class="card-title">${GROUPS[2].title}</div><div class="card-sub">${GROUPS[2].sub}</div></div><div id="st-group-2"></div></div>
           <div class="card"><div class="card-head"><div class="card-title">แก้ได้ด้วยคำสั่งเท่านั้น</div><a href="#/security" class="card-sub">Security →</a></div>
@@ -1938,6 +1957,7 @@ PAGES.tools = () => {
 /* ---------- 04 Topology ---------- */
 PAGES.topology = () => {
   let reqId = 0;
+  const devices = devicesPanel(() => page === self);
   const nodeHtml = (ic, name, sub, val, st) => `
     <div class="topo-node path-node ${st === 'down' ? 'down' : st === 'warn' ? 'warn' : ''}">
       <div class="pn-ico">${icon(ic)}</div>
@@ -2008,23 +2028,534 @@ PAGES.topology = () => {
             <div class="head-tools"><select class="inp" id="tp-target" aria-label="ปลายทาง"></select><button class="btn btn-primary" id="tp-run" type="button">ตรวจเส้นทาง</button></div>
           </div>
           <div id="tp-hops">${TOOL_CACHE.trace ? renderToolResult('trace', TOOL_CACHE.trace) : '<div class="empty">กด “ตรวจเส้นทาง” เพื่อเริ่ม</div>'}</div>
-        </div>`;
+        </div>
+        ${devices.html}`;
       $('#tp-run').addEventListener('click', trace);
       $('#tp-target').addEventListener('change', (e) => { e.target.dataset.touched = '1'; });
       if (!S.overview) loadOverview();
       render();
+      devices.mount();
     },
+    unmount() { devices.unmount(); },
+    onEvents(evts) { devices.onEvents(evts); },
     update: render,
     onOverview: render,
   };
   return self;
 };
 
+/* ---------- ตัวช่วยของ Speed test / รายงาน ---------- */
+const mbps = (bps) => (bps === null || bps === undefined ? null : bps / 1e6);
+function fmtMbps(bps, digits) {
+  const v = mbps(bps);
+  if (v === null) return '—';
+  return v.toFixed(digits ?? (v >= 100 ? 0 : 1));
+}
+/** % ของความเร็วแพ็กเกจ (null ถ้าไม่ได้ตั้งไว้) */
+const planPct = (bps, plan) => (plan > 0 && bps ? 100 * bps / 1e6 / plan : null);
+const pctClass = (p) => (p === null ? '' : p >= 80 ? 'c-ok' : p >= 50 ? 'c-warn' : 'c-crit');
+function fmtDay(ts) { return new Date(ts * 1000).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' }); }
+function fmtDateLong(ts) { return new Date(ts * 1000).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }); }
+
+/** กราฟเส้นแบบแกนเวลา (ไม่มีเส้นเกณฑ์ latency) */
+function makeLineChart(canvas, { yTitle = '', tooltipFmt = 'd MMM HH:mm', unit = 'day', stacked = false, type = 'line' } = {}) {
+  if (!chartReady()) {
+    canvas.insertAdjacentHTML('afterend', '<div class="chart-msg">โหลด Chart.js ไม่ได้<br>ต้องต่ออินเทอร์เน็ตตอนเปิดหน้าเว็บ</div>');
+    return null;
+  }
+  return new Chart(canvas, {
+    type,
+    data: { datasets: [] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 600 }, parsing: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: { type: 'time', time: { unit, tooltipFormat: tooltipFmt, displayFormats: { hour: 'd MMM HH:mm', day: 'd MMM' } }, grid: { display: false }, stacked, offset: type === 'bar', ticks: { maxTicksLimit: 10, maxRotation: 0, autoSkip: true } },
+        y: { beginAtZero: true, title: { display: !!yTitle, text: yTitle }, stacked, ticks: { maxTicksLimit: 6 } },
+      },
+      plugins: { legend: { labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true } } },
+    },
+    plugins: [zoomFixPlugin, glowPlugin],
+  });
+}
+
+/* ---------- 04 Speed Test ---------- */
+PAGES.speed = () => {
+  let chart = null, timer = 0, data = null;
+  const PHASE = { latency: 'กำลังวัด ping…', download: 'กำลังวัดดาวน์โหลด…', upload: 'กำลังวัดอัปโหลด…' };
+
+  const statCard = (id, ic, label, cls = '') => `
+    <div class="sp-stat ${cls}" id="sp-${id}">
+      <div class="sp-stat-ico">${icon(ic)}</div>
+      <div><div class="klabel">${label}</div><div class="sp-val js-v">—</div><div class="kdelta js-d">&nbsp;</div></div>
+    </div>`;
+  const setStat = (id, val, unit, sub = '&nbsp;', subCls = '') => {
+    const el = $(`#sp-${id}`);
+    if (!el) return;
+    el.querySelector('.js-v').innerHTML = val === '—' ? '—' : `${val}<small>${unit}</small>`;
+    const d = el.querySelector('.js-d');
+    d.innerHTML = sub;
+    d.className = `kdelta js-d ${subCls}`;
+  };
+
+  function renderStatus() {
+    if (!data) return;
+    const st = data.status || {};
+    const plan = data.plan;
+    const last = data.tests.find((t) => !t.error);
+    const running = !!st.running;
+    const btn = $('#sp-go');
+    btn.disabled = running || !data.status;
+    btn.classList.toggle('running', running);
+    $('#sp-go-label').textContent = running ? (PHASE[st.phase] || 'กำลังวัด…') : 'เริ่มวัด';
+    const live = running && st.live_bps ? fmtMbps(st.live_bps) : null;
+    $('#sp-live').innerHTML = running
+      ? `<span class="sp-live-num">${live ?? '…'}</span><small>${live ? 'Mbps' : ''}</small>`
+      : last ? `<span class="sp-live-num">${fmtMbps(last.down_bps)}</span><small>Mbps</small>` : '<span class="sp-live-num">—</span>';
+    $('#sp-live-sub').textContent = running ? (st.phase === 'upload' ? 'อัปโหลด' : st.phase === 'download' ? 'ดาวน์โหลด' : 'ping')
+      : last ? `ดาวน์โหลดล่าสุด · ${fmtDT(last.ts)}` : 'ยังไม่เคยวัด';
+    const prog = running ? ({ latency: 0, download: 1, upload: 2 }[st.phase] ?? 0) / 3 + (st.progress || 0) / 3 : 0;
+    $('#sp-prog').style.width = `${Math.round(prog * 100)}%`;
+    $('#sp-prog').parentElement.hidden = !running;
+    $('#sp-ring').style.strokeDasharray = `${(running ? prog : last ? 1 : 0) * 553} 553`;
+
+    const src = running ? st : last;
+    const show = (bps, pl, id, label) => {
+      const p = planPct(bps, pl);
+      setStat(id, fmtMbps(bps), 'Mbps', p === null ? (pl ? '&nbsp;' : `<span class="c-muted">ตั้งความเร็วแพ็กเกจได้ที่ Settings</span>`) : `${p.toFixed(0)}% ของแพ็กเกจ ${pl} Mbps`, pctClass(p));
+    };
+    show(src?.down_bps, plan.down_mbps, 'down');
+    show(src?.up_bps, plan.up_mbps, 'up');
+    setStat('ping', src?.ping_ms === null || src?.ping_ms === undefined ? '—' : fmtMs(src.ping_ms), 'ms', 'HTTP ไป-กลับ ถึง Cloudflare');
+    setStat('jit', last && !running ? last.jitter_ms.toFixed(1) : '—', 'ms', 'ความแกว่งของ ping');
+    const err = !running && st.error;
+    $('#sp-err').hidden = !err;
+    $('#sp-err').textContent = err || '';
+    $('#sp-auto').innerHTML = data.interval_hours > 0
+      ? `วัดอัตโนมัติทุก ${data.interval_hours} ชม.`
+      : 'วัดอัตโนมัติ: ปิดอยู่ (<a href="#/settings" class="link-btn">ตั้งได้ที่ Settings</a>)';
+  }
+
+  function renderHistory() {
+    const tests = data.tests;
+    const plan = data.plan;
+    $('#sp-count').textContent = tests.length ? `${tests.length} ครั้งล่าสุด` : '';
+    $('#sp-table').innerHTML = `<thead><tr><th>เวลา</th><th>วิธี</th><th class="num">ดาวน์โหลด</th><th class="num">อัปโหลด</th><th class="num">Ping</th><th class="num">Jitter</th><th class="num">เทียบแพ็กเกจ</th></tr></thead>
+      <tbody>${tests.length ? tests.map((t) => {
+        if (t.error) return `<tr><td class="mono">${fmtDT(t.ts)}</td><td>${t.trigger === 'scheduled' ? 'อัตโนมัติ' : 'กดเอง'}</td><td colspan="5" class="c-crit" style="white-space:normal">${esc(t.error)}</td></tr>`;
+        const pd = planPct(t.down_bps, plan.down_mbps);
+        return `<tr><td class="mono">${fmtDT(t.ts)}</td><td>${t.trigger === 'scheduled' ? 'อัตโนมัติ' : 'กดเอง'}</td>
+          <td class="num">${fmtMbps(t.down_bps)} Mbps</td><td class="num">${fmtMbps(t.up_bps)} Mbps</td>
+          <td class="num">${fmtMs(t.ping_ms)} ms</td><td class="num">${t.jitter_ms?.toFixed(1) ?? '—'} ms</td>
+          <td class="num ${pctClass(pd)}">${pd === null ? '—' : pd.toFixed(0) + '%'}</td></tr>`;
+      }).join('') : '<tr><td colspan="7" class="empty">ยังไม่มีผลการวัด — กด “เริ่มวัด”</td></tr>'}</tbody>`;
+    if (!chart) return;
+    const ok = tests.filter((t) => !t.error).slice().reverse();
+    const ds = (label, key, color) => ({
+      label, data: ok.map((t) => ({ x: t.ts * 1000, y: mbps(t[key]) })), borderColor: color, backgroundColor: areaFill(color),
+      fill: true, tension: .3, pointRadius: ok.length < 40 ? 3 : 0, pointHoverRadius: 5, borderWidth: 2,
+    });
+    const planLine = (v, color, label) => (v > 0 && ok.length ? [{
+      label, data: [{ x: ok[0].ts * 1000, y: v }, { x: ok[ok.length - 1].ts * 1000, y: v }], borderColor: color + '99',
+      borderDash: [6, 5], borderWidth: 1.2, pointRadius: 0, fill: false, isFail: true,
+    }] : []);
+    chart.data.datasets = [ds('ดาวน์โหลด', 'down_bps', C.primary), ds('อัปโหลด', 'up_bps', C.violet),
+      ...planLine(plan.down_mbps, C.primary, `แพ็กเกจดาวน์โหลด ${plan.down_mbps}`), ...planLine(plan.up_mbps, C.violet, `แพ็กเกจอัปโหลด ${plan.up_mbps}`)];
+    const span = ok.length > 1 ? ok[ok.length - 1].ts - ok[0].ts : 0;
+    chart.options.scales.x.time.unit = span > 2 * DAY ? 'day' : 'hour';
+    chart.update();
+    $('#sp-chart-empty').hidden = ok.length > 0;
+  }
+
+  async function load() {
+    try { data = await getJSON('/api/speedtest'); } catch (_) { return; }
+    if (page !== self) return;
+    renderStatus();
+    renderHistory();
+    clearTimeout(timer);
+    if (data.status?.running) timer = setTimeout(load, 700);
+  }
+
+  async function go() {
+    $('#sp-go').disabled = true;
+    try {
+      await postJSON('/api/speedtest/run');
+    } catch (err) {
+      toast({ kind: 'error', message: err.message });
+    }
+    load();
+  }
+
+  const self = {
+    mount(el) {
+      el.innerHTML = `
+        <div class="grid sp-top">
+          <div class="card sp-hero">
+            <div class="sp-dial">
+              <svg viewBox="0 0 200 200" aria-hidden="true">
+                <defs><linearGradient id="sp-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#39D6A0"/><stop offset=".5" stop-color="#41D8EF"/><stop offset="1" stop-color="#A78BFA"/></linearGradient></defs>
+                <circle cx="100" cy="100" r="88" fill="none" stroke="rgba(28,46,74,.9)" stroke-width="10"/>
+                <circle id="sp-ring" cx="100" cy="100" r="88" fill="none" stroke="url(#sp-grad)" stroke-width="10" stroke-linecap="round" style="stroke-dasharray:0 553"/>
+              </svg>
+              <div class="sp-dial-in"><div id="sp-live"></div><div class="sp-live-sub" id="sp-live-sub"></div></div>
+            </div>
+            <div class="sp-side">
+              <button class="sp-go" id="sp-go" type="button">${icon('speed')}<span id="sp-go-label">เริ่มวัด</span></button>
+              <div class="health-bar sp-prog" hidden><div id="sp-prog" style="width:0"></div></div>
+              <div class="card-sub" id="sp-auto"></div>
+              <div class="card-sub">เซิร์ฟเวอร์: speed.cloudflare.com · ใช้เวลาราว 20 วินาที</div>
+              <div class="sp-err c-crit" id="sp-err" hidden></div>
+            </div>
+          </div>
+          <div class="sp-stats">
+            ${statCard('down', 'down', 'ดาวน์โหลด')}
+            ${statCard('up', 'up', 'อัปโหลด')}
+            ${statCard('ping', 'timer', 'Ping')}
+            ${statCard('jit', 'jitter', 'Jitter')}
+          </div>
+        </div>
+        <div class="card mt">
+          <div class="card-head"><div>${cardTitle('trend', 'ความเร็วย้อนหลัง')}<div class="card-sub" style="margin:2px 0 0 34px">เส้นประ = ความเร็วตามแพ็กเกจ (ตั้งได้ที่ Settings)</div></div></div>
+          <div class="chart-box"><canvas id="sp-chart"></canvas><div class="chart-msg" id="sp-chart-empty" hidden>ยังไม่มีผลการวัด</div></div>
+        </div>
+        <div class="card mt">
+          <div class="card-head">${cardTitle('list', 'ประวัติการวัด')}<span class="card-sub" id="sp-count"></span></div>
+          <div class="tbl-wrap"><table class="tbl" id="sp-table"></table></div>
+        </div>`;
+      $('#sp-go').addEventListener('click', go);
+      chart = makeLineChart($('#sp-chart'), { yTitle: 'Mbps' });
+      load();
+    },
+    unmount() { clearTimeout(timer); chart?.destroy(); },
+    onEvents(evts) { if (evts?.some((e) => e.kind === 'speedtest')) load(); },
+  };
+  return self;
+};
+
+/* ---------- 09 Reports ---------- */
+PAGES.report = () => {
+  let range = 'week', rep = null, chart = null, reqId = 0;
+  const RANGES = {
+    week: () => { const e = nowSec(); return [startOfDay(e) - 6 * DAY, e, '7 วันล่าสุด']; },
+    month30: () => { const e = nowSec(); return [startOfDay(e) - 29 * DAY, e, '30 วันล่าสุด']; },
+    thisMonth: () => { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return [d.getTime() / 1000, nowSec(), 'เดือนนี้']; },
+    lastMonth: () => {
+      const a = new Date(); a.setDate(1); a.setHours(0, 0, 0, 0); a.setMonth(a.getMonth() - 1);
+      const b = new Date(a); b.setMonth(b.getMonth() + 1);
+      return [a.getTime() / 1000, b.getTime() / 1000, 'เดือนที่แล้ว'];
+    },
+  };
+  const CAUSE = { isp: ['ผู้ให้บริการ (ISP)', 'c-crit'], local: ['ในบ้าน (เราเตอร์/Wi-Fi)', 'c-warn'], unknown: ['ไม่ทราบ', 'c-muted'] };
+  const pctTxt = (v, d = 2) => (v === null || v === undefined ? '—' : `${v.toFixed(d)}%`);
+  const fitChart = () => chart?.resize();  // กระดาษแคบกว่าจอ — ให้กราฟวาดใหม่ตามขนาดตอนพิมพ์
+  const kpi = (label, val, sub = '', cls = '') => `<div class="card rp-kpi"><div class="kpi-label">${label}</div><div class="kpi-val ${cls}">${val}</div><div class="kpi-b">${sub}</div></div>`;
+
+  function render() {
+    const r = rep, s = r.summary, plan = r.plan;
+    const ext = r.targets.filter((t) => t.kind !== 'gateway');
+    const gw = r.targets.find((t) => t.kind === 'gateway');
+    const cover = s.period_sec ? 100 * s.monitored_sec / s.period_sec : null;
+    const pd = planPct(s.down_avg_bps, plan.down_mbps), pu = planPct(s.up_avg_bps, plan.up_mbps);
+    const [, , label] = RANGES[range]();
+    $('#rp-sheet').innerHTML = `
+      <div class="rp-head">
+        <div><h2>รายงานคุณภาพอินเทอร์เน็ต</h2>
+          <div class="card-sub">${label}: ${fmtDateLong(r.start)} – ${fmtDateLong(Math.min(r.end, r.generated) - 1)} · สร้างเมื่อ ${fmtDT(r.generated)}</div></div>
+        <div class="rp-meta card-sub">
+          <div>เครื่องที่วัด: <b>${esc(S.overview?.hostname || '—')}</b>${S.overview?.local_ip ? ` (${esc(S.overview.local_ip)})` : ''}</div>
+          <div>ปลายทางภายนอก: ${ext.map((t) => `${esc(t.name)} (${esc(t.host)})`).join(', ') || '—'}</div>
+          <div>Gateway (เราเตอร์): ${gw ? esc(gw.host) : 'ไม่ได้วัด'} · วัดทุก ${S.cfg?.interval_sec ?? '—'} วินาที</div>
+        </div>
+      </div>
+      <div class="grid rp-kpis">
+        ${kpi('อินเทอร์เน็ตใช้ได้ (Uptime)', pctTxt(s.uptime_pct, 3), `ช่วงที่โปรแกรมทำงาน ${fmtDur(s.monitored_sec)} (${pctTxt(cover, 0)} ของช่วงรายงาน)`, s.uptime_pct !== null && s.uptime_pct < 99 ? 'c-warn' : '')}
+        ${kpi('อินเทอร์เน็ตหลุด', `${s.outages}<small>ครั้ง</small>`, s.outages ? `รวม ${fmtDur(s.outage_sec)} · นานสุด ${fmtDur(s.longest_sec)}` : 'ไม่มีการหลุด', s.outages ? 'c-crit' : 'c-ok')}
+        ${kpi('สาเหตุ', `${s.isp_outages}<small>ISP</small> · ${s.local_outages}<small>ในบ้าน</small>`, gw ? 'ในบ้าน = เราเตอร์ไม่ตอบในช่วงเดียวกัน' : 'ไม่ได้วัด gateway จึงแยกสาเหตุไม่ได้')}
+        ${kpi('Latency เฉลี่ย', s.avg_ms === null ? '—' : `${fmtMs(s.avg_ms)}<small>ms</small>`, `สูงสุด ${fmtMs(s.max_ms)} ms · เกินเกณฑ์ ${r.threshold_ms} ms ${s.high_latency} ครั้ง`)}
+        ${kpi('Packet loss', pctTxt(s.loss_pct), 'ปลายทางภายนอก', s.loss_pct > 1 ? 'c-warn' : '')}
+        ${kpi('ความเร็วเฉลี่ย', s.speedtests ? `${fmtMbps(s.down_avg_bps)}<small>↓</small> ${fmtMbps(s.up_avg_bps)}<small>↑ Mbps</small>` : '—',
+          s.speedtests ? `${s.speedtests} ครั้ง · ต่ำสุด ↓${fmtMbps(s.down_min_bps)} ↑${fmtMbps(s.up_min_bps)}${pd !== null ? ` · ${pd.toFixed(0)}% ของแพ็กเกจ` : ''}` : 'ยังไม่มี speed test ในช่วงนี้', pctClass(pd))}
+      </div>
+      <div class="card mt rp-chart-card">
+        <div class="card-head">${cardTitle('history', 'รายวัน')}<span class="card-sub">แท่ง = นาทีที่หลุด · เส้น = latency เฉลี่ย</span></div>
+        <div class="chart-box"><canvas id="rp-chart"></canvas></div>
+      </div>
+      <div class="card mt">
+        <div class="card-head">${cardTitle('list', 'สรุปรายวัน')}</div>
+        <div class="tbl-wrap"><table class="tbl rp-tbl">
+          <thead><tr><th>วันที่</th><th class="num">วัดได้</th><th class="num">Uptime</th><th class="num">หลุด</th><th class="num">รวมเวลาหลุด</th><th class="num">Latency เฉลี่ย</th><th class="num">สูงสุด</th><th class="num">Loss</th><th class="num">↓ Mbps</th><th class="num">↑ Mbps</th></tr></thead>
+          <tbody>${r.days.slice().reverse().map((d) => `<tr class="${d.monitored_sec ? '' : 'rp-empty'}">
+            <td>${fmtDay(d.day)}</td><td class="num">${d.monitored_sec ? fmtDur(d.monitored_sec) : '—'}</td>
+            <td class="num ${d.uptime_pct !== null && d.uptime_pct < 99 ? 'c-warn' : ''}">${pctTxt(d.uptime_pct)}</td>
+            <td class="num ${d.outages ? 'c-crit' : ''}">${d.outages || '—'}</td><td class="num">${d.outage_sec ? fmtDur(d.outage_sec) : '—'}</td>
+            <td class="num">${d.avg_ms === null ? '—' : fmtMs(d.avg_ms) + ' ms'}</td><td class="num">${d.max_ms === null ? '—' : fmtMs(d.max_ms) + ' ms'}</td>
+            <td class="num">${pctTxt(d.loss_pct)}</td><td class="num">${fmtMbps(d.speed_down_bps)}</td><td class="num">${fmtMbps(d.speed_up_bps)}</td></tr>`).join('')}</tbody>
+        </table></div>
+      </div>
+      <div class="card mt">
+        <div class="card-head">${cardTitle('alert', 'รายการที่อินเทอร์เน็ตหลุด')}<span class="card-sub">ทุกปลายทางภายนอกไม่ตอบพร้อมกัน</span></div>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>#</th><th>เริ่ม</th><th>กลับมา</th><th class="num">นาน</th><th>สาเหตุที่น่าจะเป็น</th></tr></thead>
+          <tbody>${r.outages.length ? r.outages.map((o, i) => `<tr><td class="mono">${i + 1}</td><td class="mono">${fmtDT(o.start)}</td>
+            <td class="mono">${o.ongoing ? '<span class="c-crit">ยังหลุดอยู่</span>' : fmtDT(o.end)}</td><td class="num">${fmtDur(o.sec)}</td>
+            <td class="${CAUSE[o.cause][1]}">${CAUSE[o.cause][0]}</td></tr>`).join('') : '<tr><td colspan="5" class="empty">ไม่มีการหลุดในช่วงนี้</td></tr>'}</tbody>
+        </table></div>
+      </div>
+      <div class="card mt">
+        <div class="card-head">${cardTitle('speed', 'ผล Speed test')}${plan.down_mbps ? `<span class="card-sub">แพ็กเกจ ${plan.down_mbps}/${plan.up_mbps || '—'} Mbps</span>` : ''}</div>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>เวลา</th><th class="num">ดาวน์โหลด</th><th class="num">อัปโหลด</th><th class="num">Ping</th><th class="num">เทียบแพ็กเกจ</th></tr></thead>
+          <tbody>${r.speedtests.length ? r.speedtests.slice().reverse().map((t) => t.error
+            ? `<tr><td class="mono">${fmtDT(t.ts)}</td><td colspan="4" class="c-crit">${esc(t.error)}</td></tr>`
+            : `<tr><td class="mono">${fmtDT(t.ts)}</td><td class="num">${fmtMbps(t.down_bps)} Mbps</td><td class="num">${fmtMbps(t.up_bps)} Mbps</td>
+               <td class="num">${fmtMs(t.ping_ms)} ms</td><td class="num ${pctClass(planPct(t.down_bps, plan.down_mbps))}">${planPct(t.down_bps, plan.down_mbps)?.toFixed(0) ?? '—'}${plan.down_mbps ? '%' : ''}</td></tr>`).join('')
+            : '<tr><td colspan="5" class="empty">ไม่มี speed test ในช่วงนี้ — วัดได้ที่หน้า Speed Test</td></tr>'}</tbody>
+        </table></div>
+      </div>
+      <div class="rp-note card-sub">
+        วิธีคิด: Network Pulse ping ปลายทางทุก ${S.cfg?.interval_sec ?? '—'} วินาที · “หลุด” เมื่อไม่ตอบติดกัน ${S.cfg?.down_after_failures ?? '—'} ครั้ง
+        · นับว่าอินเทอร์เน็ตหลุดเมื่อปลายทางภายนอกทุกตัวหลุดพร้อมกัน · ถ้าเราเตอร์ในบ้านไม่ตอบด้วยในช่วงนั้น จะนับเป็นปัญหาในบ้าน ไม่ใช่ ISP
+        · Uptime คิดเฉพาะช่วงที่คอมเปิดและโปรแกรมทำงาน
+      </div>`;
+    chart?.destroy();
+    chart = makeLineChart($('#rp-chart'), { tooltipFmt: 'EEE d MMM', type: 'bar' });
+    if (chart) {
+      const days = r.days;  // แสดงทุกวันในช่วง (วันที่ไม่ได้วัดเป็นช่องว่าง)
+      chart.options.scales.x.min = r.days[0].day * 1000;
+      chart.options.scales.x.max = (r.days[r.days.length - 1].day + DAY) * 1000;
+      chart.options.scales.y.title = { display: true, text: 'นาทีที่หลุด' };
+      chart.options.scales.y1 = { position: 'right', beginAtZero: true, grid: { display: false }, title: { display: true, text: 'ms' } };
+      chart.data.datasets = [
+        { type: 'bar', label: 'หลุด (นาที)', data: days.map((d) => ({ x: (d.day + DAY / 2) * 1000, y: d.monitored_sec ? +(d.outage_sec / 60).toFixed(1) : null })), backgroundColor: C.crit + 'AA', borderRadius: 4, maxBarThickness: 28, isFail: true },
+        { type: 'line', label: 'Latency เฉลี่ย (ms)', yAxisID: 'y1', data: days.map((d) => ({ x: (d.day + DAY / 2) * 1000, y: d.avg_ms })), borderColor: C.primary, backgroundColor: C.primary, tension: .3, pointRadius: 3, borderWidth: 2, spanGaps: true },
+      ];
+      chart.update();
+    }
+  }
+
+  async function load() {
+    const [a, b] = RANGES[range]();
+    const my = ++reqId;
+    $('#rp-sheet').classList.add('loading');
+    try {
+      const d = await getJSON(`/api/report?start=${Math.floor(a)}&end=${Math.floor(b)}&tz=${-new Date().getTimezoneOffset() * 60}`);
+      if (page !== self || my !== reqId) return;
+      rep = d;
+      render();
+    } catch (err) {
+      if (page === self) $('#rp-sheet').innerHTML = `<div class="card empty">โหลดรายงานไม่สำเร็จ: ${esc(err.message)}</div>`;
+    }
+    $('#rp-sheet').classList.remove('loading');
+  }
+
+  function csv() {
+    if (!rep) return;
+    const q = (v) => { const t = v === null || v === undefined ? '' : String(v); return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+    const iso = (ts) => { const d = new Date(ts * 1000); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${fmtClock(ts)}`; };
+    const day = (ts) => iso(ts).slice(0, 10);
+    const n = (v, d = 2) => (v === null || v === undefined ? '' : (+v).toFixed(d));
+    const s = rep.summary;
+    const rows = [
+      ['Network Pulse - รายงานคุณภาพอินเทอร์เน็ต'], ['ช่วง', iso(rep.start), iso(Math.min(rep.end, rep.generated))], ['สร้างเมื่อ', iso(rep.generated)], [],
+      ['สรุป'], ['Uptime (%)', n(s.uptime_pct, 3)], ['เวลาที่วัดได้ (วินาที)', s.monitored_sec], ['หลุด (ครั้ง)', s.outages], ['รวมเวลาหลุด (วินาที)', s.outage_sec],
+      ['หลุดจาก ISP (ครั้ง)', s.isp_outages], ['หลุดจากในบ้าน (ครั้ง)', s.local_outages], ['Latency เฉลี่ย (ms)', n(s.avg_ms, 1)], ['Latency สูงสุด (ms)', n(s.max_ms, 1)],
+      ['Packet loss (%)', n(s.loss_pct)], ['Speed test (ครั้ง)', s.speedtests], ['ดาวน์โหลดเฉลี่ย (Mbps)', n(mbps(s.down_avg_bps), 1)], ['อัปโหลดเฉลี่ย (Mbps)', n(mbps(s.up_avg_bps), 1)],
+      ['แพ็กเกจ (Mbps)', rep.plan.down_mbps || '', rep.plan.up_mbps || ''], [],
+      ['รายวัน'], ['วันที่', 'วัดได้ (วินาที)', 'Uptime (%)', 'หลุด (ครั้ง)', 'เวลาหลุด (วินาที)', 'Latency เฉลี่ย (ms)', 'Latency สูงสุด (ms)', 'Loss (%)', 'ดาวน์โหลด (Mbps)', 'อัปโหลด (Mbps)'],
+      ...rep.days.map((d) => [day(d.day + 3600), d.monitored_sec, n(d.uptime_pct, 3), d.outages, d.outage_sec, n(d.avg_ms, 1), n(d.max_ms, 1), n(d.loss_pct), n(mbps(d.speed_down_bps), 1), n(mbps(d.speed_up_bps), 1)]),
+      [], ['รายการที่หลุด'], ['เริ่ม', 'กลับมา', 'นาน (วินาที)', 'สาเหตุ'],
+      ...rep.outages.map((o) => [iso(o.start), o.ongoing ? 'ยังหลุดอยู่' : iso(o.end), o.sec, CAUSE[o.cause][0]]),
+      [], ['Speed test'], ['เวลา', 'ดาวน์โหลด (Mbps)', 'อัปโหลด (Mbps)', 'Ping (ms)', 'Jitter (ms)', 'ข้อผิดพลาด'],
+      ...rep.speedtests.map((t) => [iso(t.ts), n(mbps(t.down_bps), 1), n(mbps(t.up_bps), 1), n(t.ping_ms, 1), n(t.jitter_ms, 1), t.error || '']),
+    ];
+    const blob = new Blob(['﻿' + rows.map((r) => r.map(q).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `network-pulse-report-${day(rep.start)}_${day(Math.min(rep.end, rep.generated) - 1)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+
+  const self = {
+    mount(el) {
+      el.innerHTML = `
+        <div class="card no-print rp-bar">
+          <div class="seg" id="rp-range"><button data-r="week" class="active">7 วันล่าสุด</button><button data-r="month30">30 วันล่าสุด</button><button data-r="thisMonth">เดือนนี้</button><button data-r="lastMonth">เดือนที่แล้ว</button></div>
+          <div class="head-tools">
+            <button class="btn" id="rp-csv" type="button">${icon('filedown')}ดาวน์โหลด CSV</button>
+            <button class="btn btn-primary" id="rp-print" type="button">${icon('print')}พิมพ์ / บันทึก PDF</button>
+          </div>
+        </div>
+        <div id="rp-sheet" class="rp-sheet mt"><div class="card empty">กำลังสร้างรายงาน…</div></div>`;
+      $('#rp-range').addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        range = b.dataset.r;
+        [...$('#rp-range').children].forEach((x) => x.classList.toggle('active', x === b));
+        load();
+      });
+      $('#rp-csv').addEventListener('click', csv);
+      $('#rp-print').addEventListener('click', () => window.print());
+      window.addEventListener('beforeprint', fitChart);
+      window.addEventListener('afterprint', fitChart);
+      if (!S.overview) loadOverview();
+      load();
+    },
+    unmount() {
+      chart?.destroy();
+      window.removeEventListener('beforeprint', fitChart);
+      window.removeEventListener('afterprint', fitChart);
+    },
+    onOverview() { if (rep) render(); },
+  };
+  return self;
+};
+
+/* ---------- อุปกรณ์ในวง LAN (อยู่ในหน้า Topology) ---------- */
+function devicesPanel(isActive) {
+  let data = null, timer = 0, filter = 'all', query = '', editing = null;
+  const isRandom = (mac) => (parseInt(mac.slice(0, 2), 16) & 2) !== 0;
+  const NEW_SEC = DAY;
+
+  const html = `
+    <div class="card mt" id="dv-card">
+      <div class="card-head">
+        <div>${cardTitle('device', 'อุปกรณ์ในวง LAN')}<div class="card-sub" id="dv-sub" style="margin:2px 0 0 34px">กำลังโหลด…</div></div>
+        <div class="head-tools">
+          <input class="inp" id="dv-q" type="search" placeholder="ค้นหา IP / ชื่อ / MAC" aria-label="ค้นหาอุปกรณ์">
+          <button class="btn btn-primary" id="dv-scan" type="button">${icon('scan')}สแกนตอนนี้</button>
+        </div>
+      </div>
+      <div class="dv-warn" id="dv-warn" hidden></div>
+      <div class="dv-bar">
+        <div class="seg" id="dv-filter"><button data-f="all" class="active">ทั้งหมด</button><button data-f="online">ออนไลน์</button><button data-f="unknown">ยังไม่รู้จัก</button><button data-f="new">ใหม่ (24 ชม.)</button></div>
+        <span class="card-sub" id="dv-count"></span>
+      </div>
+      <div class="tbl-wrap dv-wrap"><table class="tbl" id="dv-table"></table></div>
+    </div>`;
+
+  function rows() {
+    const last = data.last_scan?.ts ?? 0;
+    const now = nowSec();
+    const q = query.trim().toLowerCase();
+    return data.devices.filter((d) => {
+      if (filter === 'online' && d.last_seen < last) return false;
+      if (filter === 'unknown' && d.known) return false;
+      if (filter === 'new' && now - d.first_seen > NEW_SEC) return false;
+      if (q && ![d.ip, d.mac, d.name, d.hostname].some((v) => (v || '').toLowerCase().includes(q))) return false;
+      return true;
+    });
+  }
+
+  function render() {
+    if (!data) return;
+    const st = data.status || {};
+    const ls = data.last_scan;
+    const running = !!st.running;
+    $('#dv-scan').disabled = running || !data.status;
+    $('#dv-scan').innerHTML = running ? '<span class="spin"></span>กำลังสแกน…' : `${icon('scan')}สแกนตอนนี้`;
+    $('#dv-sub').innerHTML = running ? 'กำลังส่ง ARP ไปทุก IP ในวง — ใช้เวลาราว 10–30 วินาที'
+      : ls ? `สแกนล่าสุด ${fmtDT(ls.ts)} · วง <span class="mono">${esc(ls.subnet)}</span> · พบ ${ls.found} เครื่อง · ใช้ ${(ls.ms / 1000).toFixed(0)} วินาที`
+        + (data.interval_min > 0 ? ` · สแกนอัตโนมัติทุก ${data.interval_min} นาที` : ' · สแกนอัตโนมัติ: ปิด')
+        : 'ยังไม่เคยสแกน — กด “สแกนตอนนี้” เพื่อดูว่ามีอุปกรณ์อะไรต่ออยู่บ้าง';
+    if (st.error && !running) $('#dv-sub').innerHTML += ` · <span class="c-crit">${esc(st.error)}</span>`;
+    const big = ls && ls.found > 40;
+    $('#dv-warn').hidden = !big;
+    if (big) $('#dv-warn').innerHTML = `${icon('alert')}<div>วงนี้มีอุปกรณ์ ${ls.found} เครื่อง — น่าจะเป็นเครือข่ายของที่ทำงาน/มหาวิทยาลัย/หอพัก ไม่ใช่วงในบ้าน
+      อุปกรณ์ส่วนใหญ่เป็นของคนอื่น และผู้ดูแลเครือข่ายอาจไม่อนุญาตให้สแกน${data.interval_min > 0 ? ' <b>ควรปิดการสแกนอัตโนมัติที่ Settings</b>' : ''}</div>`;
+    const list = rows();
+    const now = nowSec();
+    const last = ls?.ts ?? 0;
+    $('#dv-count').textContent = `${list.length} จาก ${data.devices.length} เครื่อง`;
+    $('#dv-table').innerHTML = `<thead><tr><th></th><th>IP</th><th>ชื่อ</th><th>MAC</th><th>เห็นครั้งแรก</th><th>เห็นล่าสุด</th><th></th></tr></thead>
+      <tbody>${list.length ? list.map((d) => {
+        const online = d.last_seen >= last;
+        const tags = [
+          d.ip === data.self_ip ? '<span class="dv-tag t-self">เครื่องนี้</span>' : '',
+          d.ip === data.gateway_ip ? '<span class="dv-tag t-gw">Router</span>' : '',
+          now - d.first_seen <= NEW_SEC ? '<span class="dv-tag t-new">ใหม่</span>' : '',
+          isRandom(d.mac) ? '<span class="dv-tag" title="MAC แบบสุ่ม — มักเป็นมือถือที่เปิด Private Wi-Fi Address">MAC สุ่ม</span>' : '',
+          d.known ? '<span class="dv-tag t-known">รู้จักแล้ว</span>' : '',
+        ].join('');
+        const nameCell = editing === d.mac
+          ? `<input class="inp dv-name-in" data-mac="${esc(d.mac)}" value="${esc(d.name || '')}" maxlength="40" placeholder="${esc(d.hostname || 'ตั้งชื่อ เช่น มือถือแม่')}">`
+          : `<b>${esc(d.name || d.hostname || '')}</b>${d.name && d.hostname ? ` <span class="c-muted">${esc(d.hostname)}</span>` : ''}${!d.name && !d.hostname ? '<span class="c-muted">ไม่ทราบชื่อ</span>' : ''} ${tags}`;
+        return `<tr class="${online ? '' : 'dv-off'}">
+          <td><span class="dot ${online ? 'dot-ok' : ''}" title="${online ? 'ตอบในการสแกนล่าสุด' : 'ไม่ตอบในการสแกนล่าสุด'}"></span></td>
+          <td class="mono">${esc(d.ip)}</td><td class="dv-name">${nameCell}</td><td class="mono c-muted">${esc(d.mac)}</td>
+          <td class="mono">${fmtDT(d.first_seen)}</td><td class="mono">${online ? 'ออนไลน์' : fmtDT(d.last_seen)}</td>
+          <td class="dv-act">
+            <button class="btn btn-sm" data-act="name" data-mac="${esc(d.mac)}">ตั้งชื่อ</button>
+            <button class="btn btn-sm ${d.known ? 'on' : ''}" data-act="known" data-mac="${esc(d.mac)}" data-v="${d.known ? 0 : 1}">${d.known ? '✓ รู้จัก' : 'รู้จักแล้ว'}</button>
+            <button class="btn btn-sm btn-danger" data-act="del" data-mac="${esc(d.mac)}" title="ลบออกจากรายการ (ถ้ายังต่ออยู่จะกลับมาในการสแกนครั้งถัดไป)">ลบ</button>
+          </td></tr>`;
+      }).join('') : `<tr><td colspan="7" class="empty">${data.devices.length ? 'ไม่มีอุปกรณ์ที่ตรงกับตัวกรอง' : 'ยังไม่มีข้อมูล'}</td></tr>`}</tbody>`;
+    const inp = $('.dv-name-in');
+    if (inp) { inp.focus(); inp.select(); }
+  }
+
+  async function load() {
+    try { data = await getJSON('/api/devices'); } catch (_) { return; }
+    if (!isActive()) return;
+    render();
+    clearTimeout(timer);
+    if (data.status?.running) timer = setTimeout(load, 1000);
+  }
+
+  async function act(fn) {
+    try { await fn(); } catch (err) { toast({ kind: 'error', message: err.message }); }
+    load();
+  }
+
+  function saveName(input) {
+    const mac = input.dataset.mac, name = input.value.trim();
+    editing = null;
+    act(() => postJSON('/api/devices/update', { mac, name }));
+  }
+
+  return {
+    html,
+    mount() {
+      $('#dv-scan').addEventListener('click', () => act(async () => { await postJSON('/api/devices/scan'); }));
+      $('#dv-q').addEventListener('input', (e) => { query = e.target.value; render(); });
+      $('#dv-filter').addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        filter = b.dataset.f;
+        [...$('#dv-filter').children].forEach((x) => x.classList.toggle('active', x === b));
+        render();
+      });
+      const tbl = $('#dv-table');
+      tbl.addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-act]');
+        if (!b) return;
+        const mac = b.dataset.mac;
+        if (b.dataset.act === 'name') { editing = mac; render(); }
+        else if (b.dataset.act === 'known') act(() => postJSON('/api/devices/update', { mac, known: b.dataset.v === '1' }));
+        else if (b.dataset.act === 'del' && confirm(`ลบ ${mac} ออกจากรายการ?`)) act(() => postJSON('/api/devices/delete', { mac }));
+      });
+      tbl.addEventListener('keydown', (e) => {
+        if (!e.target.classList.contains('dv-name-in')) return;
+        if (e.key === 'Enter') saveName(e.target);
+        else if (e.key === 'Escape') { editing = null; render(); }
+      });
+      tbl.addEventListener('focusout', (e) => { if (e.target.classList.contains('dv-name-in') && editing) saveName(e.target); });
+      load();
+    },
+    unmount() { clearTimeout(timer); },
+    onEvents(evts) { if (evts?.some((e) => e.kind === 'new_device' || e.kind === 'lan_scan')) load(); },
+  };
+}
+
 /* ---------- search (Ctrl+K) ---------- */
 const SEARCH_EXTRA = [
   { label: 'Ping', sub: 'Network Tools', ic: 'prompt', href: '#/tools/ping' },
   { label: 'Traceroute', sub: 'Network Tools', ic: 'topology', href: '#/tools/trace' },
   { label: 'DNS Lookup', sub: 'Network Tools', ic: 'globe', href: '#/tools/dns' },
+  { label: 'วัดความเร็วเน็ต (Speed test)', sub: 'Speed Test', ic: 'speed', href: '#/speed' },
+  { label: 'รายงานสำหรับแจ้ง ISP', sub: 'Reports', ic: 'report', href: '#/report' },
+  { label: 'อุปกรณ์ในวง LAN', sub: 'Topology', ic: 'device', href: '#/topology' },
   { label: 'IP Info', sub: 'Network Tools', ic: 'info', href: '#/tools/info' },
   { label: 'เปลี่ยนเป้าหมาย / เกณฑ์เตือน', sub: 'Settings', ic: 'settings', href: '#/settings' },
   { label: 'เข้าจากมือถือ / อุปกรณ์ที่ login', sub: 'Security', ic: 'security', href: '#/security' },
