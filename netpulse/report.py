@@ -9,6 +9,20 @@ from . import db
 
 DAY = 86400
 LOOKBACK = 30 * DAY  # หาเหตุการณ์ down ที่เริ่มก่อนช่วงรายงาน
+WEAK_SIGNAL = 35     # สัญญาณ Wi-Fi ต่ำกว่านี้ (%) นับว่าอ่อน
+WIFI_PAD = 15        # ดูค่า Wi-Fi ก่อน/หลังช่วงที่หลุดเผื่อไว้ (วินาที)
+
+
+def wifi_cause(samples):
+    """จากค่า Wi-Fi ช่วงที่หลุด: "wifi" (หลุดจาก Wi-Fi), "wifi_weak" (สัญญาณอ่อน) หรือ None"""
+    if not samples:
+        return None
+    if any(not w["connected"] for w in samples):
+        return "wifi"
+    sig = [w["signal"] for w in samples if w["signal"] is not None]
+    if sig and min(sig) < WEAK_SIGNAL:
+        return "wifi_weak"
+    return None
 
 
 def _intervals(evts, target, start_shift, now):
@@ -127,6 +141,12 @@ def build(conn, cfg, start, end, now, tz=0):
 
     outages = internet_outages(conn, cfg, start, end, now)
     for o in outages:
+        wc = wifi_cause(db.wifi_between(conn, o["start"] - WIFI_PAD, o["end"] + WIFI_PAD))
+        if wc and o["cause"] != "isp":
+            o["cause"] = wc
+        elif wc:
+            o["wifi"] = wc  # router ยังตอบ แต่ Wi-Fi มีปัญหาในช่วงเดียวกัน — แสดงเป็นข้อสังเกต
+    for o in outages:
         a = o["start"]
         first = True
         while a < o["end"]:
@@ -152,6 +172,9 @@ def build(conn, cfg, start, end, now, tz=0):
             cell["speed_down"].append(t["down_bps"])
             cell["speed_up"].append(t["up_bps"])
 
+    wifi_days = db.wifi_daily(conn, start, end, tz)
+    dns_days = db.dns_daily(conn, start, end, tz)
+
     pct = lambda a, b: round(100 * a / b, 3) if b else None
     avg = lambda xs: sum(xs) / len(xs) if xs else None
     day_rows = []
@@ -166,6 +189,11 @@ def build(conn, cfg, start, end, now, tz=0):
             "gw_avg_ms": round(cell["gw_sum"] / cell["gw_ok"], 1) if cell["gw_ok"] else None,
             "high_latency": cell["high_latency"],
             "speed_down_bps": avg(cell["speed_down"]), "speed_up_bps": avg(cell["speed_up"]),
+            "wifi_signal": _r(wifi_days.get(cell["day"], [None])[0]),
+            "wifi_down_samples": (wifi_days.get(cell["day"]) or [None, 0])[1],
+            "dns_ms": _r((dns_days.get(cell["day"], {}).get("system") or [None])[0]),
+            "dns_fail_pct": _fail(dns_days.get(cell["day"], {}).get("system")),
+            "dns_public_ms": _r((dns_days.get(cell["day"], {}).get("public") or [None])[0]),
         })
 
     tot = lambda k: sum(c[k] for c in days.values())
@@ -187,6 +215,14 @@ def build(conn, cfg, start, end, now, tz=0):
         "down_min_bps": min((t["down_bps"] for t in ok_tests), default=None),
         "up_avg_bps": avg([t["up_bps"] for t in ok_tests]),
         "up_min_bps": min((t["up_bps"] for t in ok_tests), default=None),
+        "wifi_outages": sum(o["cause"] in ("wifi", "wifi_weak") for o in outages),
+        "wifi_signal": _wavg([(v[0], v[2]) for v in wifi_days.values()]),
+        "wifi_down_sec": sum(v[1] or 0 for v in wifi_days.values()) * WIFI_STEP,
+        "has_wifi": bool(wifi_days),
+        "dns_ms": _wavg([(v["system"][0], v["system"][2] - v["system"][1]) for v in dns_days.values() if "system" in v]),
+        "dns_fail_pct": _fail([sum(v["system"][i] or 0 for v in dns_days.values() if "system" in v) for i in (0, 1, 2)]
+                              if any("system" in v for v in dns_days.values()) else None),
+        "dns_public_ms": _wavg([(v["public"][0], v["public"][2] - v["public"][1]) for v in dns_days.values() if "public" in v]),
     }
     return {
         "start": start, "end": end, "tz": tz, "generated": now,
@@ -197,3 +233,21 @@ def build(conn, cfg, start, end, now, tz=0):
         "summary": summary, "days": day_rows, "outages": outages,
         "speedtests": list(reversed(tests)),
     }
+
+
+WIFI_STEP = 10  # วินาทีต่อหนึ่งตัวอย่าง Wi-Fi (ตาม diag.WIFI_SEC)
+
+
+def _r(v, d=1):
+    return None if v is None else round(v, d)
+
+
+def _fail(cell):
+    """cell = [ms เฉลี่ย, ไม่ตอบ, ทั้งหมด]"""
+    return round(100 * (cell[1] or 0) / cell[2], 2) if cell and cell[2] else None
+
+
+def _wavg(pairs):
+    pairs = [(v, w) for v, w in pairs if v is not None and w]
+    tot = sum(w for _, w in pairs)
+    return round(sum(v * w for v, w in pairs) / tot, 1) if tot else None

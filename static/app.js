@@ -46,6 +46,7 @@ const ICONS = {
   device: '<rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18h2"/>',
   print: '<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="1.5"/><path d="M7 14h10v7H7z"/>',
   filedown: '<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M12 11v6.5M9.2 14.8 12 17.5l2.8-2.7"/>',
+  wifi: '<path d="M2.5 8.8a14 14 0 0 1 19 0M5.8 12.3a9 9 0 0 1 12.4 0M9.2 15.7a4.2 4.2 0 0 1 5.6 0"/><circle cx="12" cy="19" r="1.1"/>',
   scan: '<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16"/>',
 };
 const icon = (id, cls = '') => `<svg${cls ? ` class="${cls}"` : ''} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[id] || ''}</svg>`;
@@ -77,9 +78,12 @@ const KIND = {
   new_device: { label: 'อุปกรณ์ใหม่', title: 'พบอุปกรณ์ใหม่ในวง LAN', color: C.warn, dot: 'dot-warn' },
   lan_scan: { label: 'สแกน LAN', title: 'สแกนอุปกรณ์ในวง LAN', color: C.primary, dot: 'dot-info' },
   error: { label: 'ผิดพลาด', title: 'ทำไม่สำเร็จ', color: C.crit, dot: 'dot-crit' },
+  wifi: { label: 'Wi-Fi', title: 'Wi-Fi เปลี่ยนสถานะ', color: C.warn, dot: 'dot-warn' },
+  dns_down: { label: 'DNS ไม่ตอบ', title: 'DNS ของเครื่องไม่ตอบ', color: C.crit, dot: 'dot-crit' },
+  dns_ok: { label: 'DNS ปกติ', title: 'DNS กลับมาตอบแล้ว', color: C.ok, dot: 'dot-ok' },
 };
 const QUIET_KINDS = new Set(['gap', 'auth', 'settings', 'speedtest', 'lan_scan']);  // แสดงเป็น toast เท่านั้น ไม่ส่ง Browser Notification
-const ALERT_KINDS = new Set(['down', 'high_latency', 'auth_lock', 'new_device']);  // นับเป็น "ยังไม่ได้อ่าน" ที่กระดิ่ง
+const ALERT_KINDS = new Set(['down', 'high_latency', 'auth_lock', 'new_device', 'dns_down']);  // นับเป็น "ยังไม่ได้อ่าน" ที่กระดิ่ง
 const STATUS_TEXT = { online: 'Online', degraded: 'Degraded', offline: 'Offline', unknown: 'Unknown' };
 const STATUS_TH = { online: 'ออนไลน์', degraded: 'ไม่เสถียร', offline: 'ออฟไลน์', unknown: 'ไม่ทราบสถานะ' };
 
@@ -90,6 +94,7 @@ const S = {
   rounds: [],          // [ts, lat0, lat1, ...]  (null = ไม่ตอบ, "x" = ไม่ได้วัด)
   status: null,
   traffic: null,
+  diag: null,          // Wi-Fi + DNS ล่าสุด
   overview: null,      // ผล /api/overview (สถิติ 24 ชม.)
   recentEvents: [],
   lastTs: 0,
@@ -283,7 +288,7 @@ function areaFill(color) {
 
 function makeChart(canvas, { lossAxis = false, tooltipFmt = 'd MMM HH:mm:ss', legend = true } = {}) {
   if (!chartReady()) {
-    canvas.insertAdjacentHTML('afterend', '<div class="chart-msg">โหลด Chart.js ไม่ได้<br>ต้องต่ออินเทอร์เน็ตตอนเปิดหน้าเว็บ</div>');
+    canvas.insertAdjacentHTML('afterend', '<div class="chart-msg">โหลด Chart.js ไม่ได้<br>ลองกด Ctrl+F5</div>');
     return null;
   }
   const grid = { color: 'rgba(28,46,74,.55)' };
@@ -542,6 +547,7 @@ async function poll() {
     S.status = d.status;
     S.serverNow = d.now;
     S.traffic = d.traffic;
+    S.diag = d.diag;
     for (const r of d.rounds) {
       if (r[0] > S.lastTs) { S.rounds.push(r); S.lastTs = r[0]; }
     }
@@ -896,6 +902,13 @@ PAGES.overview = () => {
     $('#ov-events').innerHTML = list.length ? list.map((e) => eventItem(e)).join('') : '<div class="empty">ยังไม่มีเหตุการณ์ — ทุกอย่างปกติ</div>';
   }
 
+  const wifiSub = () => {
+    const w = S.diag?.wifi;
+    if (!w) return '';
+    return w.connected ? `Wi-Fi ${w.signal ?? '—'}% · ${w.band || ''}` : 'Wi-Fi หลุด';
+  };
+  const wifiWeak = () => { const w = S.diag?.wifi; return !!w && (!w.connected || (w.signal ?? 100) < 35); };
+
   function renderPath() {
     const ts = S.status?.targets ?? [];
     const gi = gwIdx();
@@ -910,7 +923,7 @@ PAGES.overview = () => {
     const beat = S.status?.last_beat;
     const alive = S.connected && beat && S.serverNow - beat <= 3 * (S.cfg?.interval_sec ?? 2) + 3;
     const nodes = [
-      { ic: 'monitor', name: 'Local PC', sub: S.overview?.local_ip || S.overview?.hostname || 'เครื่องนี้', val: alive ? 'Online' : 'ไม่ทำงาน', st: alive ? 'ok' : 'down' },
+      { ic: 'monitor', name: 'Local PC', sub: wifiSub() || S.overview?.local_ip || S.overview?.hostname || 'เครื่องนี้', val: alive ? 'Online' : 'ไม่ทำงาน', st: alive ? (wifiWeak() ? 'warn' : 'ok') : 'down' },
       { ic: 'router', name: 'Gateway', sub: gw?.host ?? 'ไม่ได้วัด', val: gw ? msTxt(gw) : '—', st: gw ? tState(gw) : 'unknown' },
       { ic: 'globe', name: 'Internet', sub: 'ISP / Public', val: best.length ? `${fmtMs(Math.min(...best))} ms` : internet === 'down' ? 'หลุด' : '—', st: internet },
       { ic: 'cloud', name: 'Target', sub: first?.host ?? '—', val: first ? msTxt(first) : '—', st: first ? tState(first) : 'unknown' },
@@ -1093,6 +1106,7 @@ PAGES.overview = () => {
 
 PAGES.live = () => {
   let chart = null, updCards = null, win = 300;
+  const diag = diagPanel();
   return {
     mount(el) {
       el.innerHTML = `
@@ -1106,6 +1120,7 @@ PAGES.live = () => {
           </div>
           <div class="chart-box tall"><canvas id="lv-chart"></canvas></div>
         </div>
+        ${diag.html}
         <div class="card mt">
           <div class="card-head"><div class="card-title">Ping log</div><div class="card-sub">15 รอบล่าสุด</div></div>
           <div class="tbl-wrap"><table class="tbl" id="lv-log"></table></div>
@@ -1120,9 +1135,11 @@ PAGES.live = () => {
       });
       updCards = targetCards($('#lv-targets'), win, 'ช่วง 5 นาที');
       chart = makeChart($('#lv-chart'), { tooltipFmt: 'HH:mm:ss' });
+      diag.mount();
       this.update();
     },
     update() {
+      diag.update();
       if (!$('#lv-targets').children.length && S.status) updCards = targetCards($('#lv-targets'), win, 'ช่วงที่เลือก');
       updCards?.();
       const end = S.serverNow;
@@ -1141,9 +1158,128 @@ PAGES.live = () => {
           return `<td class="num ${v > thr() ? 'c-warn' : ''}">${fmtMs(v)} ms</td>`;
         }).join('')}</tr>`).join('') : `<tr><td colspan="${S.ids.length + 1}" class="empty">ยังไม่มีข้อมูล</td></tr>`}</tbody>`;
     },
-    unmount() { chart?.destroy(); },
+    unmount() { chart?.destroy(); diag.unmount(); },
   };
 };
+
+/* ---------- Wi-Fi + DNS (อยู่ในหน้า Live Monitor) ---------- */
+const sigClass = (v) => (v === null || v === undefined ? '' : v >= 60 ? 'c-ok' : v >= 35 ? 'c-warn' : 'c-crit');
+const sigLabel = (v) => (v === null || v === undefined ? '' : v >= 80 ? 'ดีมาก' : v >= 60 ? 'ดี' : v >= 35 ? 'พอใช้' : 'อ่อน');
+const DNS_COLORS = { system: [C.primary, '#7DD3FC'], public: [C.violet, '#F9A8D4'] };
+const dnsLabel = (v) => (v.kind === 'system' ? v.name : `${v.name} DNS`);
+
+function diagPanel() {
+  let range = 3600, wChart = null, dChart = null, timer = 0, data = null;
+
+  const html = `
+    <div class="grid two-col-eq mt">
+      <div class="card">
+        <div class="card-head">
+          <div>${cardTitle('wifi', 'Wi-Fi')}<div class="card-sub" id="wf-sub" style="margin:2px 0 0 34px">กำลังโหลด…</div></div>
+          <div class="seg" id="dg-range"><button data-r="3600" class="active">1 ชม.</button><button data-r="21600">6 ชม.</button><button data-r="86400">24 ชม.</button></div>
+        </div>
+        <div class="wf-now" id="wf-now"></div>
+        <div class="chart-box short"><canvas id="wf-chart"></canvas><div class="chart-msg" id="wf-empty" hidden></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div>${cardTitle('globe', 'DNS')}<div class="card-sub" style="margin:2px 0 0 34px">เวลาที่ใช้แปลงชื่อเว็บเป็น IP — ถ้าช้า เว็บจะเปิดช้าแม้ ping ปกติ</div></div>
+        </div>
+        <div class="dns-now" id="dns-now"></div>
+        <div class="chart-box short"><canvas id="dns-chart"></canvas><div class="chart-msg" id="dns-empty" hidden></div></div>
+      </div>
+    </div>`;
+
+  function renderNow() {
+    const d = S.diag;
+    if (!$('#wf-sub')) return;
+    if (!d) { $('#wf-sub').textContent = 'ไม่มีข้อมูล'; return; }
+    const w = d.wifi;
+    if (d.wifi_available === false) {
+      $('#wf-sub').textContent = 'เครื่องนี้ไม่ได้ใช้ Wi-Fi (ต่อสาย LAN) หรือไม่มีการ์ด Wi-Fi';
+      $('#wf-now').innerHTML = '';
+    } else if (w) {
+      $('#wf-sub').innerHTML = w.connected
+        ? `<b>${esc(w.ssid || '—')}</b> · ${esc(w.band || '')} ช่อง ${w.channel ?? '—'} · ${esc(w.radio || '')}`
+        : '<span class="c-crit">ไม่ได้เชื่อมต่อ Wi-Fi</span>';
+      const lvl = Math.max(0, Math.min(4, Math.ceil((w.signal ?? 0) / 25)));
+      $('#wf-now').innerHTML = w.connected ? `
+        <div class="wf-sig"><div class="wf-bars s${lvl} ${sigClass(w.signal)}"><i></i><i></i><i></i><i></i></div>
+          <div><div class="sp-val ${sigClass(w.signal)}">${w.signal ?? '—'}<small>%</small></div>
+          <div class="kdelta">${sigLabel(w.signal)}${w.rssi !== null && w.rssi !== undefined ? ` · ${w.rssi} dBm` : ''}</div></div></div>
+        <div class="wf-kv"><span>ความเร็วลิงก์ รับ / ส่ง</span><b>${w.rx_mbps ?? '—'} / ${w.tx_mbps ?? '—'} Mbps</b></div>
+        <div class="wf-kv"><span>ย่าน · ช่อง</span><b>${esc(w.band || '—')} · ${w.channel ?? '—'}</b></div>` : '';
+    }
+    const servers = Object.entries(d.dns || {});
+    const blocked = servers.some(([, v]) => v.kind === 'public' && v.ms === null) && servers.some(([, v]) => v.kind === 'system' && v.ms !== null);
+    $('#dns-now').innerHTML = servers.length ? servers.map(([ip, v]) => `
+      <div class="dns-item"><div class="g-name"><i style="background:${DNS_COLORS[v.kind][0]}"></i>${esc(dnsLabel(v))}</div>
+        <div class="mono c-muted dns-ip">${esc(ip)}</div>
+        <div class="g-ms ${v.ms === null ? 'crit' : v.ms > 100 ? 'warn' : ''}">${v.ms === null ? 'ไม่ตอบ' : fmtMs(v.ms) + ' ms'}</div></div>`).join('')
+      + (blocked ? '<div class="card-sub dns-note">DNS สาธารณะไม่ตอบ แต่ DNS ของเครื่องตอบ — เครือข่ายนี้อาจบล็อกการใช้ DNS ภายนอก (พบบ่อยในที่ทำงาน/มหาวิทยาลัย)</div>' : '')
+      : '<div class="empty">รอผลรอบแรก (วัดทุก 30 วินาที)</div>';
+  }
+
+  function renderCharts() {
+    if (!data) return;
+    const xr = { min: data.start * 1000, max: data.now * 1000 };
+    if (wChart) {
+      const pts = data.wifi;
+      wChart.data.datasets = [
+        { label: 'สัญญาณ (%)', data: pts.map((p) => ({ x: p[0] * 1000, y: p[1] })), borderColor: C.ok, backgroundColor: areaFill(C.ok), fill: true, tension: .3, pointRadius: 0, borderWidth: 2 },
+        { label: 'Wi-Fi หลุด', data: pts.filter((p) => p[3] > 0).map((p) => ({ x: p[0] * 1000, y: 3 })), borderColor: C.crit, backgroundColor: C.crit, showLine: false, pointStyle: 'crossRot', pointRadius: 6, isFail: true },
+      ];
+      Object.assign(wChart.options.scales.x, xr);
+      wChart.options.scales.y.max = 100;
+      wChart.update('none');
+      $('#wf-empty').hidden = pts.length > 0;
+      $('#wf-empty').textContent = S.diag?.wifi_available === false ? 'ไม่ได้ใช้ Wi-Fi' : 'ยังไม่มีข้อมูล';
+    }
+    if (dChart) {
+      const used = { system: 0, public: 0 };
+      dChart.data.datasets = Object.entries(data.dns).map(([ip, v]) => {
+        const info = data.snapshot?.dns?.[ip] ?? S.diag?.dns?.[ip] ?? { name: ip, kind: v.kind };
+        const color = DNS_COLORS[v.kind][used[v.kind]++ % 2];
+        return { label: info.name === ip ? ip : `${dnsLabel(info)} (${ip})`, data: v.points.map((p) => ({ x: p[0] * 1000, y: p[1] })), borderColor: color, backgroundColor: color, tension: .3, pointRadius: 0, borderWidth: 2 };
+      });
+      Object.assign(dChart.options.scales.x, xr);
+      dChart.update('none');
+      $('#dns-empty').hidden = Object.keys(data.dns).length > 0;
+      $('#dns-empty').textContent = 'ยังไม่มีข้อมูล';
+    }
+  }
+
+  async function load() {
+    clearTimeout(timer);
+    try { data = await getJSON(`/api/diag?range=${range}`); } catch (_) { data = null; }
+    if (!$('#wf-chart')) return;
+    renderCharts();
+    timer = setTimeout(load, 30000);
+  }
+
+  return {
+    html,
+    mount() {
+      const unit = () => (range > 6 * 3600 ? 'hour' : 'minute');
+      wChart = makeLineChart($('#wf-chart'), { yTitle: '%', tooltipFmt: 'HH:mm', unit: unit() });
+      dChart = makeLineChart($('#dns-chart'), { yTitle: 'ms', tooltipFmt: 'HH:mm', unit: unit() });
+      if (wChart) wChart.options.plugins.legend.display = false;
+      $('#dg-range').addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        range = +b.dataset.r;
+        [...$('#dg-range').children].forEach((x) => x.classList.toggle('active', x === b));
+        [wChart, dChart].forEach((c) => { if (c) c.options.scales.x.time.unit = unit(); });
+        load();
+      });
+      renderNow();
+      load();
+    },
+    update: renderNow,
+    unmount() { clearTimeout(timer); wChart?.destroy(); dChart?.destroy(); },
+  };
+}
+
 
 PAGES.history = () => {
   let chart = null, range = '24h', reqId = 0;
@@ -1251,7 +1387,7 @@ PAGES.events = () => {
   const load = async () => {
     try {
       const d = await getJSON('/api/events?limit=500');
-      const groups = { all: null, down: ['down', 'up'], latency: ['high_latency', 'latency_ok'], gap: ['gap'], net: ['speedtest', 'new_device', 'lan_scan'], sec: ['auth', 'auth_lock', 'settings'] };
+      const groups = { all: null, down: ['down', 'up'], latency: ['high_latency', 'latency_ok'], gap: ['gap'], net: ['speedtest', 'new_device', 'lan_scan', 'wifi', 'dns_down', 'dns_ok'], sec: ['auth', 'auth_lock', 'settings'] };
       const list = d.events.filter((e) => !groups[filter] || groups[filter].includes(e.kind));
       $('#ev-table').innerHTML = `<thead><tr><th>เวลา</th><th>ประเภท</th><th>เป้าหมาย</th><th>รายละเอียด</th></tr></thead>
         <tbody>${list.length ? list.map((e) => `<tr>
@@ -1269,7 +1405,7 @@ PAGES.events = () => {
           <div class="card-head">
             <div><div class="card-title">บันทึกเหตุการณ์</div><div class="card-sub">หลุดเมื่อไม่ตอบติดกัน ${S.cfg?.down_after_failures ?? 3} ครั้ง · latency สูงเมื่อเกิน ${thr()} ms ติดกัน ${S.cfg?.latency_consecutive ?? 5} รอบ</div></div>
             <div class="seg" id="ev-filter">
-              <button data-f="all" class="active">ทั้งหมด</button><button data-f="down">หลุด/กลับมา</button><button data-f="latency">Latency</button><button data-f="gap">ไม่มีข้อมูล</button><button data-f="net">Speed test/อุปกรณ์</button><button data-f="sec">ระบบ/ความปลอดภัย</button>
+              <button data-f="all" class="active">ทั้งหมด</button><button data-f="down">หลุด/กลับมา</button><button data-f="latency">Latency</button><button data-f="gap">ไม่มีข้อมูล</button><button data-f="net">Wi-Fi/DNS/Speed/อุปกรณ์</button><button data-f="sec">ระบบ/ความปลอดภัย</button>
             </div>
           </div>
           <div class="tbl-wrap"><table class="tbl" id="ev-table"></table></div>
@@ -1528,7 +1664,13 @@ PAGES.security = () => {
           <div class="card">
             <div class="card-head"><div class="card-title">เข้าจากมือถือ (Wi-Fi เดียวกัน)</div>${lanState}</div>
             ${lan.bound ? `<div class="kpi-label">เปิดบนมือถือที่ต่อ Wi-Fi บ้านด้วยที่อยู่นี้</div><div class="code-line" style="margin-top:6px">${esc(lan.url)}</div>
-              <div class="notice info">มือถือจะเห็นการแจ้งเตือนเป็นป๊อปอัปในหน้าเว็บ — Browser Notification ใช้ได้เฉพาะบนเครื่องนี้ (localhost)</div>`
+              <div class="notice info">มือถือจะเห็นการแจ้งเตือนเป็นป๊อปอัปในหน้าเว็บ — Browser Notification ใช้ได้เฉพาะบนเครื่องนี้ (localhost)</div>
+              <div class="pwa-how">
+                <b>ทำเป็นไอคอนบนหน้าจอมือถือ</b>
+                <div><span class="dv-tag">iPhone</span> เปิดด้วย Safari → ปุ่มแชร์ → “เพิ่มไปยังหน้าจอโฮม” — เปิดแบบเต็มจอเหมือนแอป</div>
+                <div><span class="dv-tag">Android</span> เปิดด้วย Chrome → เมนู ⋮ → “เพิ่มลงในหน้าจอหลัก”</div>
+                <div class="c-muted">บนคอม: Edge/Chrome → เมนู → “ติดตั้งแอปนี้” จะได้หน้าต่างแยกของ Network Pulse</div>
+              </div>`
               : lan.enabled ? `<div class="notice warn">${esc(lan.error || 'กำลังเปิด…')}</div>`
               : `<p class="muted" style="margin:0;font-size:13px">ปิดอยู่ — เปิดได้หลังตั้งรหัสแล้ว โดยรัน:</p><div class="code-line mt">python setup_auth.py --lan on</div>
                  <p class="muted" style="font-size:12px">แล้วเปิดโปรแกรมใหม่ · Windows อาจถามสิทธิ์ Firewall ครั้งแรก ให้อนุญาตเฉพาะ "Private network"</p>`}
@@ -2060,7 +2202,7 @@ function fmtDateLong(ts) { return new Date(ts * 1000).toLocaleDateString('th-TH'
 /** กราฟเส้นแบบแกนเวลา (ไม่มีเส้นเกณฑ์ latency) */
 function makeLineChart(canvas, { yTitle = '', tooltipFmt = 'd MMM HH:mm', unit = 'day', stacked = false, type = 'line' } = {}) {
   if (!chartReady()) {
-    canvas.insertAdjacentHTML('afterend', '<div class="chart-msg">โหลด Chart.js ไม่ได้<br>ต้องต่ออินเทอร์เน็ตตอนเปิดหน้าเว็บ</div>');
+    canvas.insertAdjacentHTML('afterend', '<div class="chart-msg">โหลด Chart.js ไม่ได้<br>ลองกด Ctrl+F5</div>');
     return null;
   }
   return new Chart(canvas, {
@@ -2070,7 +2212,7 @@ function makeLineChart(canvas, { yTitle = '', tooltipFmt = 'd MMM HH:mm', unit =
       responsive: true, maintainAspectRatio: false, animation: { duration: 600 }, parsing: false,
       interaction: { mode: 'index', intersect: false },
       scales: {
-        x: { type: 'time', time: { unit, tooltipFormat: tooltipFmt, displayFormats: { hour: 'd MMM HH:mm', day: 'd MMM' } }, grid: { display: false }, stacked, offset: type === 'bar', ticks: { maxTicksLimit: 10, maxRotation: 0, autoSkip: true } },
+        x: { type: 'time', time: { unit, tooltipFormat: tooltipFmt, displayFormats: { minute: 'HH:mm', hour: 'd MMM HH:mm', day: 'd MMM' } }, grid: { display: false }, stacked, offset: type === 'bar', ticks: { maxTicksLimit: 10, maxRotation: 0, autoSkip: true } },
         y: { beginAtZero: true, title: { display: !!yTitle, text: yTitle }, stacked, ticks: { maxTicksLimit: 6 } },
       },
       plugins: { legend: { labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true } } },
@@ -2245,7 +2387,10 @@ PAGES.report = () => {
       return [a.getTime() / 1000, b.getTime() / 1000, 'เดือนที่แล้ว'];
     },
   };
-  const CAUSE = { isp: ['ผู้ให้บริการ (ISP)', 'c-crit'], local: ['ในบ้าน (เราเตอร์/Wi-Fi)', 'c-warn'], unknown: ['ไม่ทราบ', 'c-muted'] };
+  const CAUSE = {
+    isp: ['ผู้ให้บริการ (ISP)', 'c-crit'], local: ['ในบ้าน (เราเตอร์)', 'c-warn'],
+    wifi: ['Wi-Fi หลุด', 'c-warn'], wifi_weak: ['สัญญาณ Wi-Fi อ่อน', 'c-warn'], unknown: ['ไม่ทราบ', 'c-muted'],
+  };
   const pctTxt = (v, d = 2) => (v === null || v === undefined ? '—' : `${v.toFixed(d)}%`);
   const fitChart = () => chart?.resize();  // กระดาษแคบกว่าจอ — ให้กราฟวาดใหม่ตามขนาดตอนพิมพ์
   const kpi = (label, val, sub = '', cls = '') => `<div class="card rp-kpi"><div class="kpi-label">${label}</div><div class="kpi-val ${cls}">${val}</div><div class="kpi-b">${sub}</div></div>`;
@@ -2270,11 +2415,13 @@ PAGES.report = () => {
       <div class="grid rp-kpis">
         ${kpi('อินเทอร์เน็ตใช้ได้ (Uptime)', pctTxt(s.uptime_pct, 3), `ช่วงที่โปรแกรมทำงาน ${fmtDur(s.monitored_sec)} (${pctTxt(cover, 0)} ของช่วงรายงาน)`, s.uptime_pct !== null && s.uptime_pct < 99 ? 'c-warn' : '')}
         ${kpi('อินเทอร์เน็ตหลุด', `${s.outages}<small>ครั้ง</small>`, s.outages ? `รวม ${fmtDur(s.outage_sec)} · นานสุด ${fmtDur(s.longest_sec)}` : 'ไม่มีการหลุด', s.outages ? 'c-crit' : 'c-ok')}
-        ${kpi('สาเหตุ', `${s.isp_outages}<small>ISP</small> · ${s.local_outages}<small>ในบ้าน</small>`, gw ? 'ในบ้าน = เราเตอร์ไม่ตอบในช่วงเดียวกัน' : 'ไม่ได้วัด gateway จึงแยกสาเหตุไม่ได้')}
+        ${kpi('สาเหตุ', `${s.isp_outages}<small>ISP</small> · ${s.local_outages + s.wifi_outages}<small>ในบ้าน</small>`, gw ? `ในบ้าน = เราเตอร์ไม่ตอบ${s.has_wifi ? ` หรือ Wi-Fi มีปัญหา (${s.wifi_outages} ครั้ง)` : ''}ในช่วงเดียวกัน` : 'ไม่ได้วัด gateway จึงแยกสาเหตุไม่ได้')}
         ${kpi('Latency เฉลี่ย', s.avg_ms === null ? '—' : `${fmtMs(s.avg_ms)}<small>ms</small>`, `สูงสุด ${fmtMs(s.max_ms)} ms · เกินเกณฑ์ ${r.threshold_ms} ms ${s.high_latency} ครั้ง`)}
         ${kpi('Packet loss', pctTxt(s.loss_pct), 'ปลายทางภายนอก', s.loss_pct > 1 ? 'c-warn' : '')}
         ${kpi('ความเร็วเฉลี่ย', s.speedtests ? `${fmtMbps(s.down_avg_bps)}<small>↓</small> ${fmtMbps(s.up_avg_bps)}<small>↑ Mbps</small>` : '—',
           s.speedtests ? `${s.speedtests} ครั้ง · ต่ำสุด ↓${fmtMbps(s.down_min_bps)} ↑${fmtMbps(s.up_min_bps)}${pd !== null ? ` · ${pd.toFixed(0)}% ของแพ็กเกจ` : ''}` : 'ยังไม่มี speed test ในช่วงนี้', pctClass(pd))}
+        ${s.has_wifi ? kpi('สัญญาณ Wi-Fi เฉลี่ย', s.wifi_signal === null ? '—' : `${s.wifi_signal.toFixed(0)}<small>%</small>`, s.wifi_down_sec ? `Wi-Fi หลุดรวมราว ${fmtDur(s.wifi_down_sec)}` : 'Wi-Fi ไม่หลุดเลย', sigClass(s.wifi_signal)) : ''}
+        ${kpi('DNS ของเครื่อง', s.dns_ms === null ? '—' : `${fmtMs(s.dns_ms)}<small>ms</small>`, s.dns_ms === null ? 'ยังไม่มีข้อมูล' : `ไม่ตอบ ${pctTxt(s.dns_fail_pct)}${s.dns_public_ms !== null ? ` · DNS สาธารณะ ${fmtMs(s.dns_public_ms)} ms` : ''}`, s.dns_ms > 100 || s.dns_fail_pct > 2 ? 'c-warn' : '')}
       </div>
       <div class="card mt rp-chart-card">
         <div class="card-head">${cardTitle('history', 'รายวัน')}<span class="card-sub">แท่ง = นาทีที่หลุด · เส้น = latency เฉลี่ย</span></div>
@@ -2283,13 +2430,16 @@ PAGES.report = () => {
       <div class="card mt">
         <div class="card-head">${cardTitle('list', 'สรุปรายวัน')}</div>
         <div class="tbl-wrap"><table class="tbl rp-tbl">
-          <thead><tr><th>วันที่</th><th class="num">วัดได้</th><th class="num">Uptime</th><th class="num">หลุด</th><th class="num">รวมเวลาหลุด</th><th class="num">Latency เฉลี่ย</th><th class="num">สูงสุด</th><th class="num">Loss</th><th class="num">↓ Mbps</th><th class="num">↑ Mbps</th></tr></thead>
+          <thead><tr><th>วันที่</th><th class="num">วัดได้</th><th class="num">Uptime</th><th class="num">หลุด</th><th class="num">รวมเวลาหลุด</th><th class="num">Latency เฉลี่ย</th><th class="num">สูงสุด</th><th class="num">Loss</th><th class="num">Wi-Fi</th><th class="num">DNS</th><th class="num">↓ Mbps</th><th class="num">↑ Mbps</th></tr></thead>
           <tbody>${r.days.slice().reverse().map((d) => `<tr class="${d.monitored_sec ? '' : 'rp-empty'}">
             <td>${fmtDay(d.day)}</td><td class="num">${d.monitored_sec ? fmtDur(d.monitored_sec) : '—'}</td>
             <td class="num ${d.uptime_pct !== null && d.uptime_pct < 99 ? 'c-warn' : ''}">${pctTxt(d.uptime_pct)}</td>
             <td class="num ${d.outages ? 'c-crit' : ''}">${d.outages || '—'}</td><td class="num">${d.outage_sec ? fmtDur(d.outage_sec) : '—'}</td>
             <td class="num">${d.avg_ms === null ? '—' : fmtMs(d.avg_ms) + ' ms'}</td><td class="num">${d.max_ms === null ? '—' : fmtMs(d.max_ms) + ' ms'}</td>
-            <td class="num">${pctTxt(d.loss_pct)}</td><td class="num">${fmtMbps(d.speed_down_bps)}</td><td class="num">${fmtMbps(d.speed_up_bps)}</td></tr>`).join('')}</tbody>
+            <td class="num">${pctTxt(d.loss_pct)}</td>
+            <td class="num ${sigClass(d.wifi_signal)}">${d.wifi_signal === null ? '—' : d.wifi_signal.toFixed(0) + '%'}</td>
+            <td class="num ${d.dns_ms > 100 ? 'c-warn' : ''}">${d.dns_ms === null ? '—' : fmtMs(d.dns_ms) + ' ms'}</td>
+            <td class="num">${fmtMbps(d.speed_down_bps)}</td><td class="num">${fmtMbps(d.speed_up_bps)}</td></tr>`).join('')}</tbody>
         </table></div>
       </div>
       <div class="card mt">
@@ -2298,7 +2448,7 @@ PAGES.report = () => {
           <thead><tr><th>#</th><th>เริ่ม</th><th>กลับมา</th><th class="num">นาน</th><th>สาเหตุที่น่าจะเป็น</th></tr></thead>
           <tbody>${r.outages.length ? r.outages.map((o, i) => `<tr><td class="mono">${i + 1}</td><td class="mono">${fmtDT(o.start)}</td>
             <td class="mono">${o.ongoing ? '<span class="c-crit">ยังหลุดอยู่</span>' : fmtDT(o.end)}</td><td class="num">${fmtDur(o.sec)}</td>
-            <td class="${CAUSE[o.cause][1]}">${CAUSE[o.cause][0]}</td></tr>`).join('') : '<tr><td colspan="5" class="empty">ไม่มีการหลุดในช่วงนี้</td></tr>'}</tbody>
+            <td class="${CAUSE[o.cause][1]}">${CAUSE[o.cause][0]}${o.wifi ? ` <span class="c-muted">(Wi-Fi ${o.wifi === 'wifi' ? 'หลุด' : 'อ่อน'}ด้วย)</span>` : ''}</td></tr>`).join('') : '<tr><td colspan="5" class="empty">ไม่มีการหลุดในช่วงนี้</td></tr>'}</tbody>
         </table></div>
       </div>
       <div class="card mt">
@@ -2315,6 +2465,7 @@ PAGES.report = () => {
       <div class="rp-note card-sub">
         วิธีคิด: Network Pulse ping ปลายทางทุก ${S.cfg?.interval_sec ?? '—'} วินาที · “หลุด” เมื่อไม่ตอบติดกัน ${S.cfg?.down_after_failures ?? '—'} ครั้ง
         · นับว่าอินเทอร์เน็ตหลุดเมื่อปลายทางภายนอกทุกตัวหลุดพร้อมกัน · ถ้าเราเตอร์ในบ้านไม่ตอบด้วยในช่วงนั้น จะนับเป็นปัญหาในบ้าน ไม่ใช่ ISP
+        · ถ้า Wi-Fi ของเครื่องนี้หลุดหรือสัญญาณต่ำกว่า 35% ในช่วงนั้น จะนับเป็นปัญหา Wi-Fi
         · Uptime คิดเฉพาะช่วงที่คอมเปิดและโปรแกรมทำงาน
       </div>`;
     chart?.destroy();
@@ -2360,9 +2511,11 @@ PAGES.report = () => {
       ['สรุป'], ['Uptime (%)', n(s.uptime_pct, 3)], ['เวลาที่วัดได้ (วินาที)', s.monitored_sec], ['หลุด (ครั้ง)', s.outages], ['รวมเวลาหลุด (วินาที)', s.outage_sec],
       ['หลุดจาก ISP (ครั้ง)', s.isp_outages], ['หลุดจากในบ้าน (ครั้ง)', s.local_outages], ['Latency เฉลี่ย (ms)', n(s.avg_ms, 1)], ['Latency สูงสุด (ms)', n(s.max_ms, 1)],
       ['Packet loss (%)', n(s.loss_pct)], ['Speed test (ครั้ง)', s.speedtests], ['ดาวน์โหลดเฉลี่ย (Mbps)', n(mbps(s.down_avg_bps), 1)], ['อัปโหลดเฉลี่ย (Mbps)', n(mbps(s.up_avg_bps), 1)],
-      ['แพ็กเกจ (Mbps)', rep.plan.down_mbps || '', rep.plan.up_mbps || ''], [],
-      ['รายวัน'], ['วันที่', 'วัดได้ (วินาที)', 'Uptime (%)', 'หลุด (ครั้ง)', 'เวลาหลุด (วินาที)', 'Latency เฉลี่ย (ms)', 'Latency สูงสุด (ms)', 'Loss (%)', 'ดาวน์โหลด (Mbps)', 'อัปโหลด (Mbps)'],
-      ...rep.days.map((d) => [day(d.day + 3600), d.monitored_sec, n(d.uptime_pct, 3), d.outages, d.outage_sec, n(d.avg_ms, 1), n(d.max_ms, 1), n(d.loss_pct), n(mbps(d.speed_down_bps), 1), n(mbps(d.speed_up_bps), 1)]),
+      ['แพ็กเกจ (Mbps)', rep.plan.down_mbps || '', rep.plan.up_mbps || ''],
+      ['หลุดจาก Wi-Fi (ครั้ง)', s.wifi_outages], ['สัญญาณ Wi-Fi เฉลี่ย (%)', n(s.wifi_signal, 0)],
+      ['DNS ของเครื่อง เฉลี่ย (ms)', n(s.dns_ms, 1)], ['DNS ไม่ตอบ (%)', n(s.dns_fail_pct)], [],
+      ['รายวัน'], ['วันที่', 'วัดได้ (วินาที)', 'Uptime (%)', 'หลุด (ครั้ง)', 'เวลาหลุด (วินาที)', 'Latency เฉลี่ย (ms)', 'Latency สูงสุด (ms)', 'Loss (%)', 'Wi-Fi (%)', 'DNS (ms)', 'ดาวน์โหลด (Mbps)', 'อัปโหลด (Mbps)'],
+      ...rep.days.map((d) => [day(d.day + 3600), d.monitored_sec, n(d.uptime_pct, 3), d.outages, d.outage_sec, n(d.avg_ms, 1), n(d.max_ms, 1), n(d.loss_pct), n(d.wifi_signal, 0), n(d.dns_ms, 1), n(mbps(d.speed_down_bps), 1), n(mbps(d.speed_up_bps), 1)]),
       [], ['รายการที่หลุด'], ['เริ่ม', 'กลับมา', 'นาน (วินาที)', 'สาเหตุ'],
       ...rep.outages.map((o) => [iso(o.start), o.ongoing ? 'ยังหลุดอยู่' : iso(o.end), o.sec, CAUSE[o.cause][0]]),
       [], ['Speed test'], ['เวลา', 'ดาวน์โหลด (Mbps)', 'อัปโหลด (Mbps)', 'Ping (ms)', 'Jitter (ms)', 'ข้อผิดพลาด'],

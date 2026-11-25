@@ -20,11 +20,13 @@ import time
 import urllib.request
 import webbrowser
 
-from netpulse.config import BASE_DIR, load_config
+from netpulse.config import BASE_DIR, FROZEN, RES_DIR, load_config
 
 APP = os.path.join(BASE_DIR, "app.py")
 SELF = os.path.abspath(__file__)
-ICON = os.path.join(BASE_DIR, "static", "netpulse.ico")
+ICON = os.path.join(RES_DIR, "static", "netpulse.ico")
+# รุ่น .exe: NetworkPulse.exe --serve = ตัวเซิร์ฟเวอร์, NetworkPulse.exe (ไม่มี argument) = เปิดหน้าเว็บ
+EXE = os.path.join(BASE_DIR, "NetworkPulse.exe")
 SHORTCUT_NAME = "Network Pulse.lnk"
 LOG = os.path.join(BASE_DIR, "data", "netpulse.log")
 NO_WINDOW = 0x08000000
@@ -60,8 +62,13 @@ def _powershell(script, env_extra=None):
         capture_output=True, text=True, env=env, creationflags=NO_WINDOW)
 
 
+def server_cmd():
+    """คำสั่งเริ่มเซิร์ฟเวอร์แบบไม่มีหน้าต่าง"""
+    return [EXE, "--serve"] if FROZEN else [pythonw(), APP]
+
+
 def create_shortcut(path, script, description):
-    """shortcut ที่รัน pythonw.exe <script> (ไม่มีหน้าต่าง) พร้อมไอคอนของโปรแกรม"""
+    """shortcut ที่รัน pythonw.exe <script> (หรือ NetworkPulse.exe <args> ในรุ่น .exe) พร้อมไอคอนของโปรแกรม"""
     # ส่งค่าผ่าน environment เพื่อไม่ต้องกังวลเรื่อง quote ของ path ที่มีช่องว่าง
     r = _powershell(
         "$s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:NP_LNK);"
@@ -69,8 +76,8 @@ def create_shortcut(path, script, description):
         "$s.WorkingDirectory = $env:NP_WD; $s.WindowStyle = 7;"
         "if (Test-Path $env:NP_ICON) { $s.IconLocation = $env:NP_ICON + ',0' };"
         "$s.Description = $env:NP_DESC; $s.Save()",
-        {"NP_LNK": path, "NP_TARGET": pythonw(), "NP_ARGS": script, "NP_WD": BASE_DIR,
-         "NP_ICON": ICON, "NP_DESC": description})
+        {"NP_LNK": path, "NP_TARGET": EXE if FROZEN else pythonw(), "NP_ARGS": script, "NP_WD": BASE_DIR,
+         "NP_ICON": EXE if FROZEN else ICON, "NP_DESC": description})
     if r.returncode != 0 or not os.path.exists(path):
         sys.exit("สร้าง shortcut ไม่สำเร็จ:\n" + r.stderr.strip())
 
@@ -81,9 +88,9 @@ def message_box(text, error=False):
 
 
 def running_pids():
-    """PID ของ python/pythonw ที่กำลังรัน app.py ของโฟลเดอร์นี้"""
+    """PID ของ python/pythonw ที่กำลังรัน app.py ของโฟลเดอร์นี้ (หรือ NetworkPulse.exe --serve)"""
     r = _powershell(
-        "Get-CimInstance Win32_Process -Filter \"Name='python.exe' or Name='pythonw.exe'\" | "
+        "Get-CimInstance Win32_Process -Filter \"Name='python.exe' or Name='pythonw.exe' or Name='NetworkPulse.exe'\" | "
         "Select-Object ProcessId, CommandLine | ConvertTo-Json -Compress")
     try:
         data = json.loads(r.stdout or "[]")
@@ -92,10 +99,11 @@ def running_pids():
     if isinstance(data, dict):
         data = [data]
     app = APP.lower()
+    exe = EXE.lower()
     pids = []
     for p in data:
         cmd = (p.get("CommandLine") or "").lower().replace("/", "\\")
-        if p["ProcessId"] != os.getpid() and app in cmd:
+        if p["ProcessId"] != os.getpid() and (app in cmd or (exe in cmd and "--serve" in cmd)):
             pids.append(p["ProcessId"])
     return pids
 
@@ -113,7 +121,7 @@ def start(port):
     if responding(port):
         print(f"ทำงานอยู่แล้ว → http://localhost:{port}")
         return True
-    subprocess.Popen([pythonw(), APP], cwd=BASE_DIR, creationflags=DETACHED,
+    subprocess.Popen(server_cmd(), cwd=BASE_DIR, creationflags=DETACHED,
                      stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                      close_fds=True)
     for _ in range(20):
@@ -167,12 +175,12 @@ def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "status"
     port = load_config()["port"]
     if cmd == "on":
-        create_shortcut(shortcut_path(), f'"{APP}"', "Network Pulse - start with Windows")
+        create_shortcut(shortcut_path(), "--serve" if FROZEN else f'"{APP}"', "Network Pulse - start with Windows")
         print("ตั้งให้เปิดพร้อม Windows แล้ว (ทำงานเบื้องหลัง ไม่มีหน้าต่าง)")
         start(port)
     elif cmd == "desktop":
         path = desktop_shortcut_path()
-        create_shortcut(path, f'"{SELF}" open', "เปิด Network Pulse (เริ่มทำงานถ้ายังไม่ได้เปิด)")
+        create_shortcut(path, "" if FROZEN else f'"{SELF}" open', "เปิด Network Pulse (เริ่มทำงานถ้ายังไม่ได้เปิด)")
         print(f"สร้าง shortcut แล้ว: {path}")
     elif cmd == "open":
         open_page(port)

@@ -5,3 +5,7 @@ config.json.tmp
 .claude/settings.local.json
 __pycache__/
 *.pyc
+
+# ผลจากการสร้าง .exe (packaging/build_exe.bat)
+build/
+dist/

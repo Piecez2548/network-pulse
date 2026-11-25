@@ -7,7 +7,8 @@ import sys
 import time
 
 from netpulse.auth import Auth
-from netpulse.config import BASE_DIR, load_config
+from netpulse.config import BASE_DIR, FROZEN, load_config
+from netpulse.diag import DiagSampler
 from netpulse.monitor import Monitor
 from netpulse.lanscan import LanScanner
 from netpulse.server import AppContext, detect_lan_ip, serve, start_lan_listener
@@ -15,6 +16,9 @@ from netpulse.speedtest import SpeedTester
 from netpulse.traffic import TrafficMeter
 
 LOG_PATH = os.path.join(BASE_DIR, "data", "netpulse.log")
+# คำสั่งที่แนะนำในข้อความ (รุ่น .exe ใช้ NetworkPulse-setup.exe แทน python)
+SETUP = "NetworkPulse-setup.exe" if FROZEN else "python setup_auth.py"
+AUTOSTART = "NetworkPulse-setup.exe autostart" if FROZEN else "python autostart.py"
 LOG_MAX_BYTES = 1_000_000
 
 
@@ -40,7 +44,7 @@ class _TimestampedLog:
 
 def setup_output():
     headless = sys.stdout is None or sys.stderr is None \
-        or os.path.basename(sys.executable).lower() == "pythonw.exe"
+        or os.path.basename(sys.executable).lower() in ("pythonw.exe", "networkpulse.exe")
     if headless:  # ไม่มี console (pythonw / เปิดพร้อม Windows)
         os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
         if os.path.exists(LOG_PATH) and os.path.getsize(LOG_PATH) > LOG_MAX_BYTES:
@@ -67,21 +71,23 @@ def main():
     traffic = TrafficMeter()
     speed = SpeedTester(cfg)
     lan = LanScanner(cfg, detect_lan_ip)
-    ctx = AppContext(cfg, monitor, auth, traffic=traffic, speedtest=speed, lanscan=lan)
+    diag = DiagSampler(cfg)
+    ctx = AppContext(cfg, monitor, auth, traffic=traffic, speedtest=speed, lanscan=lan, diag=diag)
     try:
         httpd = serve(ctx, cfg["host"])
     except OSError as e:
         print(f"เปิดพอร์ต {cfg['port']} ไม่ได้: {e}\n"
               f"Network Pulse อาจกำลังทำงานอยู่แล้ว (เช่นเปิดพร้อม Windows) — ลองเปิด http://localhost:{cfg['port']}\n"
-              "ดูสถานะ/หยุดตัวที่ทำงานเบื้องหลัง:  python autostart.py status  |  python autostart.py stop")
+              f"ดูสถานะ/หยุดตัวที่ทำงานเบื้องหลัง:  {AUTOSTART} status  |  {AUTOSTART} stop")
         sys.exit(1)
     monitor.start()
     traffic.start()
     speed.start_scheduler()
     lan.start_scheduler()
+    diag.start()
     print(f"Network Pulse กำลังทำงาน → http://localhost:{cfg['port']}  (กด Ctrl+C เพื่อหยุด)", flush=True)
     if not auth.enabled:
-        print("ยังไม่ได้ตั้งรหัสผ่าน: เปิดได้เฉพาะเครื่องนี้โดยไม่ต้อง login — ตั้งรหัสด้วย  python setup_auth.py", flush=True)
+        print(f"ยังไม่ได้ตั้งรหัสผ่าน: เปิดได้เฉพาะเครื่องนี้โดยไม่ต้อง login — ตั้งรหัสด้วย  {SETUP}", flush=True)
     if cfg["lan_access"]:
         if auth.enabled:
             start_lan_listener(ctx)
@@ -96,6 +102,7 @@ def main():
         monitor.stop()
         speed.stop()
         lan.stop()
+        diag.stop()
         httpd.server_close()
 
 

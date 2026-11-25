@@ -1,9 +1,27 @@
 # Network Pulse
 
 โปรแกรมเฝ้าการเชื่อมต่ออินเทอร์เน็ตบน Windows แสดงผลเป็นเว็บในเครื่อง (http://localhost:8000)
-ทำงานเฉพาะตอนเปิดคอมและเปิดโปรแกรมไว้ — **v1.2**
+ทำงานเฉพาะตอนเปิดคอมและเปิดโปรแกรมไว้ — **v1.3**
 
 ## เริ่มใช้งาน
+
+### แบบไฟล์ .exe (ไม่ต้องติดตั้ง Python)
+
+1. ดาวน์โหลด `NetworkPulse-win64.zip` จากหน้า [Releases](https://github.com/Piecez2548/network-pulse/releases) แล้วแตกไฟล์ไว้ในโฟลเดอร์ที่จะเก็บถาวร
+   (เช่น `D:\NetworkPulse`) — `config.json` และข้อมูล (`data\`) จะถูกสร้างไว้ในโฟลเดอร์เดียวกัน
+2. ดับเบิลคลิก **`NetworkPulse.exe`** → เริ่มทำงานเบื้องหลังและเปิดหน้าเว็บให้
+3. ตั้งรหัสผ่าน / เปิดพร้อม Windows ด้วย **`NetworkPulse-setup.exe`** (หน้าต่าง console):
+
+```bat
+NetworkPulse-setup.exe                    :: ตั้งรหัสผ่าน + TOTP (เหมือน python setup_auth.py)
+NetworkPulse-setup.exe --lan on           :: ตัวเลือกอื่นของ setup_auth.py ใช้ได้เหมือนกัน
+NetworkPulse-setup.exe autostart on       :: เปิดพร้อม Windows (on / off / status / start / stop / desktop)
+```
+
+> Windows SmartScreen อาจเตือนว่าไม่รู้จักผู้พัฒนา (ไฟล์ไม่ได้เซ็นชื่อ) — กด "More info" → "Run anyway"
+> สร้าง .exe เองจากซอร์ส: `packaging\build_exe.bat` (ใช้ virtualenv แยกใน `build\venv`)
+
+### แบบรันจากซอร์ส
 
 ต้องมี Python 3.11 ขึ้นไป และ `pip install -r requirements.txt` (มีแค่ pyotp)
 
@@ -29,7 +47,7 @@ python autostart.py desktop  :: สร้าง shortcut "Network Pulse" บน 
 - เปิดซ้ำไม่ได้ — ถ้ามีตัวหนึ่งใช้พอร์ต 8000 อยู่ ตัวที่สองจะแจ้งแล้วปิดตัวเอง
 - การแจ้งเตือนต้องเปิดหน้าเว็บค้างไว้ในเบราว์เซอร์ (ตัววัดบันทึกข้อมูลตลอดแม้ไม่ได้เปิดหน้าเว็บ)
 
-> หน้าเว็บโหลด Chart.js และฟอนต์จาก CDN จึงต้องมีอินเทอร์เน็ตตอนเปิดหน้า (ตัววัดทำงานได้แม้เน็ตหลุด)
+> หน้าเว็บไม่โหลดอะไรจากอินเทอร์เน็ต (Chart.js และฟอนต์อยู่ใน `static/vendor/`) จึงเปิดดูได้แม้ตอนเน็ตหลุด
 
 ## ทำงานอย่างไร
 
@@ -123,9 +141,13 @@ netpulse/tools.py      Ping / Traceroute / DNS / Public IP ของหน้า
 netpulse/speedtest.py  Speed test กับ speed.cloudflare.com + ตั้งเวลาอัตโนมัติ
 netpulse/report.py     รายงานรายวัน / รายการที่หลุด / แยกสาเหตุ ISP กับในบ้าน
 netpulse/lanscan.py    สแกนอุปกรณ์ในวง LAN ด้วย ARP (iphlpapi.SendARP) และจำ MAC ไว้
+netpulse/wifi.py       อ่านสัญญาณ Wi-Fi จาก netsh wlan show interfaces (ใช้ได้ทั้ง Windows อังกฤษ/ไทย)
+netpulse/dnsprobe.py   ถาม DNS ตรง (UDP) ไปที่ DNS ของเครื่องและ DNS สาธารณะ ไม่ผ่านแคชของ Windows
+netpulse/diag.py       เก็บค่า Wi-Fi ทุก 10 วินาที และ DNS ทุก 30 วินาที เบื้องหลัง
 netpulse/server.py     http.server: หน้าเว็บ + /api/live, /api/overview, /api/history, /api/events, /api/tools/*,
-                       /api/speedtest, /api/report, /api/devices
-static/                หน้าเว็บ (HTML/CSS/JS + Chart.js จาก CDN)
+                       /api/speedtest, /api/report, /api/devices, /api/diag
+packaging/             สร้าง .exe ด้วย PyInstaller (launcher.py, setup_cli.py, networkpulse.spec, build_exe.bat)
+static/                หน้าเว็บ (HTML/CSS/JS) · static/vendor/ = Chart.js + ฟอนต์ (เก็บในเครื่อง พร้อมไฟล์ license)
 tests/                 python -m unittest discover -s tests
 ```
 
@@ -133,7 +155,8 @@ tests/                 python -m unittest discover -s tests
 
 - **01 Overview** — สถานะรวม, Network Health 24 ชม., Latency เฉลี่ย / Jitter / Packet Loss (10 นาทีล่าสุดเทียบ 10 นาทีก่อนหน้า),
   Uptime 24 ชม. (เทียบ 24 ชม. ก่อนหน้า), Response ของ router, กราฟ 1m–24h, Connection Path, ปริมาณ Download/Upload ของการ์ดเครือข่าย
-- **02 Live Monitor** — กราฟสดและ ping log
+- **02 Live Monitor** — กราฟสด, ping log, **Wi-Fi** (สัญญาณ %, ช่อง, ย่าน, ความเร็วลิงก์ พร้อมกราฟย้อนหลัง)
+  และ **DNS** (เวลาตอบของ DNS ของเครื่องเทียบกับ 1.1.1.1 / 8.8.8.8 — ถ้า DNS ช้า เว็บจะเปิดช้าแม้ ping ปกติ)
 - **03 Network Tools** — Ping, Traceroute, DNS Lookup, IP Info (ปุ่มตรวจ Public IP ถาม api.ipify.org เฉพาะเมื่อกด)
 - **04 Speed Test** — วัดดาวน์โหลด/อัปโหลด/ping จริงกับ speed.cloudflare.com (ราว 20 วินาที ใช้เน็ต 100–400 MB ต่อครั้ง),
   เทียบ % กับความเร็วแพ็กเกจ, กราฟและประวัติย้อนหลัง · วัดอัตโนมัติตั้งได้ที่ Settings (ค่าเริ่มต้นปิด)
@@ -144,10 +167,15 @@ tests/                 python -m unittest discover -s tests
 - **07 Events & Alerts** — ตัวเลขสีแดงที่เมนูและจุดแดงที่กระดิ่ง = การหลุด / latency สูง / อุปกรณ์ใหม่ / ล็อก login ที่ยังไม่ได้ดู
 - **08 Compare** — วันนี้ vs เมื่อวาน, สัปดาห์นี้ vs สัปดาห์ที่แล้ว (ช่วงเวลาเดียวกัน), 7/30 วัน vs ช่วงก่อนหน้า, กำหนดเอง
 - **09 Reports** — รายงานไว้แนบตอนแจ้งปัญหากับ ISP: Uptime, จำนวนครั้ง/เวลาที่หลุด (แยกว่าเป็นที่ ISP หรือเราเตอร์ในบ้าน),
-  latency, packet loss, ความเร็วเทียบแพ็กเกจ, สรุปรายวัน · ปุ่ม "พิมพ์ / บันทึก PDF" และ "ดาวน์โหลด CSV" (เปิดใน Excel ได้)
-- **10 Security** — สถานะการป้องกัน, ที่อยู่สำหรับมือถือ, อุปกรณ์ที่ login อยู่
+  latency, packet loss, ความเร็วเทียบแพ็กเกจ, สัญญาณ Wi-Fi และเวลา DNS รายวัน
+  (ถ้า Wi-Fi หลุดหรือสัญญาณต่ำกว่า 35% ในช่วงที่หลุด จะระบุสาเหตุเป็น Wi-Fi) · ปุ่ม "พิมพ์ / บันทึก PDF" และ "ดาวน์โหลด CSV" (เปิดใน Excel ได้)
+- **10 Security** — สถานะการป้องกัน, ที่อยู่สำหรับมือถือ (พร้อมวิธีเพิ่มเป็นไอคอนบนหน้าจอมือถือ), อุปกรณ์ที่ login อยู่
 - **11 Settings** — ระยะวัด, เกณฑ์แจ้งเตือน, เป้าหมาย (สูงสุด 8), อายุข้อมูล, อายุการ login, Speed test อัตโนมัติ, ความเร็วแพ็กเกจ, สแกน LAN อัตโนมัติ
 
 ทุกอย่างแสดงในหน้าเว็บเท่านั้น — ไม่มีการส่งแจ้งเตือนออกไปภายนอก
+
+**เปิดบนมือถือแบบแอป:** iPhone เปิดด้วย Safari → แชร์ → "เพิ่มไปยังหน้าจอโฮม" (เปิดเต็มจอเหมือนแอป) ·
+Android เปิดด้วย Chrome → ⋮ → "เพิ่มลงในหน้าจอหลัก" · บนคอม Edge/Chrome → "ติดตั้งแอปนี้"
+(เข้าผ่าน `http://192.168.x.x` จึงเป็นไอคอนลัดที่เปิดหน้าเว็บ — ไม่มีโหมด offline เพราะต้องดึงข้อมูลสดจากคอมอยู่แล้ว)
 
 ช่องค้นหาด้านบน (Ctrl + K): พิมพ์ชื่อเมนู หรือพิมพ์ IP/โดเมนเพื่อ Ping / Traceroute / DNS ได้ทันที

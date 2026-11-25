@@ -15,14 +15,17 @@ import re
 from . import __version__, db, report, tools
 from . import settings as settings_mod
 from .auth import COOKIE_NAME, is_lan_client
-from .config import BASE_DIR, CONFIG_PATH, DEFAULTS
+from .config import CONFIG_PATH, DEFAULTS, RES_DIR
 
-STATIC_DIR = os.path.join(BASE_DIR, "static")
+STATIC_DIR = os.path.join(RES_DIR, "static")
 TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
-         ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml", ".json": "application/json"}
-CSP = ("default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; "
-       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-       "font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; "
+         ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml", ".json": "application/json",
+         ".woff2": "font/woff2", ".png": "image/png", ".ico": "image/x-icon",
+         ".webmanifest": "application/manifest+json", ".md": "text/plain; charset=utf-8",
+         ".txt": "text/plain; charset=utf-8"}
+# ทุกไฟล์ (Chart.js, ฟอนต์) อยู่ในเครื่อง — หน้าเว็บเปิดได้แม้อินเทอร์เน็ตหลุด
+CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+       "font-src 'self'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; "
        "frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
 MAX_BODY = 8192
 _MAC_RE = re.compile(r"^[0-9a-f]{2}(:[0-9a-f]{2}){5}$")
@@ -62,13 +65,14 @@ def detect_lan_ip(probe="8.8.8.8"):
 
 
 class AppContext:
-    def __init__(self, cfg, monitor, auth, config_path=CONFIG_PATH, traffic=None, speedtest=None, lanscan=None):
+    def __init__(self, cfg, monitor, auth, config_path=CONFIG_PATH, traffic=None, speedtest=None, lanscan=None, diag=None):
         self.cfg = cfg
         self.monitor = monitor
         self.auth = auth
         self.traffic = traffic
         self.speedtest = speedtest
         self.lanscan = lanscan
+        self.diag = diag
         self.config_path = config_path
         self.overview_cache = (0.0, None)
         self.running_targets = settings_mod.targets_signature(cfg["targets"])
@@ -98,6 +102,7 @@ def make_handler(ctx):
             "events": list(reversed(db.events(conn, 50, after_id=after))) if after is not None else [],
             "last_event_id": db.last_event_id(conn),
             "traffic": ctx.traffic.snapshot() if ctx.traffic else None,
+            "diag": ctx.diag.snapshot() if ctx.diag else None,
         }
 
     def api_overview(h, conn, qs):
@@ -147,6 +152,17 @@ def make_handler(ctx):
                 "tests": db.speedtest_list(conn, limit=_int(qs, "limit", 100, 1, 1000)),
                 "plan": {"down_mbps": cfg["plan_down_mbps"], "up_mbps": cfg["plan_up_mbps"]},
                 "interval_hours": cfg["speedtest_interval_hours"], "server": "speed.cloudflare.com"}
+
+    def api_diag(h, conn, qs):
+        """กราฟ Wi-Fi + DNS ย้อนหลัง (ไม่เกินระยะเก็บข้อมูลรายรอบ)"""
+        now = int(time.time())
+        span = _int(qs, "range", 3600, lo=600, hi=cfg["raw_retention_days"] * 86400)
+        bucket = 10 if span <= 3600 else 60 if span <= 6 * 3600 else 300 if span <= 2 * 86400 else 1800
+        start = now - span
+        return {"now": now, "start": start, "bucket": bucket,
+                "wifi": db.wifi_series(conn, start, now + 1, bucket),
+                "dns": db.dns_series(conn, start, now + 1, bucket),
+                "snapshot": ctx.diag.snapshot() if ctx.diag else None}
 
     def api_report(h, conn, qs):
         now = int(time.time())
@@ -361,7 +377,8 @@ def make_handler(ctx):
                   "/api/config": api_config, "/api/auth-status": api_auth_status,
                   "/api/sessions": api_sessions, "/api/settings": api_settings,
                   "/api/overview": api_overview, "/api/tools/info": api_tool_info,
-                  "/api/speedtest": api_speedtest, "/api/report": api_report, "/api/devices": api_devices}
+                  "/api/speedtest": api_speedtest, "/api/report": api_report, "/api/devices": api_devices,
+                  "/api/diag": api_diag}
     post_routes = {"/api/login": post_login, "/api/logout": post_logout,
                    "/api/sessions/revoke": post_revoke, "/api/settings": post_settings,
                    "/api/tools/ping": post_tool_ping, "/api/tools/trace": post_tool_trace,

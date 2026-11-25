@@ -2,8 +2,13 @@
 import copy
 import json
 import os
+import sys
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# FROZEN = รันจากไฟล์ .exe (PyInstaller): config.json และ data/ อยู่ข้าง ๆ .exe
+# ส่วนไฟล์หน้าเว็บ (static/) ถูกแพ็กไว้ในโฟลเดอร์ _internal (sys._MEIPASS)
+FROZEN = bool(getattr(sys, "frozen", False))
+BASE_DIR = os.path.dirname(sys.executable) if FROZEN else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RES_DIR = getattr(sys, "_MEIPASS", BASE_DIR)
 CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
 
 DEFAULTS = {

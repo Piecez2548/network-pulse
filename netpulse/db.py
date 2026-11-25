@@ -28,6 +28,12 @@ CREATE TABLE IF NOT EXISTS devices(
     first_seen INTEGER NOT NULL, last_seen INTEGER NOT NULL) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS lan_scans(
     ts INTEGER PRIMARY KEY, subnet TEXT, found INTEGER NOT NULL, ms INTEGER);
+CREATE TABLE IF NOT EXISTS wifi_samples(
+    ts INTEGER PRIMARY KEY, connected INTEGER NOT NULL, signal INTEGER, rssi INTEGER, channel INTEGER,
+    band TEXT, rx_mbps REAL, tx_mbps REAL, ssid TEXT, bssid TEXT);
+CREATE TABLE IF NOT EXISTS dns_samples(
+    ts INTEGER NOT NULL, server TEXT NOT NULL, kind TEXT NOT NULL, ms REAL);
+CREATE INDEX IF NOT EXISTS idx_dns_ts ON dns_samples(ts);
 """
 
 
@@ -389,3 +395,71 @@ def lan_scan_add(conn, ts, subnet, found, ms):
 def lan_scan_last(conn):
     row = conn.execute("SELECT ts, subnet, found, ms FROM lan_scans ORDER BY ts DESC LIMIT 1").fetchone()
     return dict(zip(("ts", "subnet", "found", "ms"), row)) if row else None
+
+
+# ---------- Wi-Fi / DNS ----------
+_WIFI_COLS = ("ts", "connected", "signal", "rssi", "channel", "band", "rx_mbps", "tx_mbps", "ssid", "bssid")
+
+
+def wifi_add(conn, ts, w):
+    with conn:
+        conn.execute(
+            f"INSERT OR REPLACE INTO wifi_samples({', '.join(_WIFI_COLS)}) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (ts, 1 if w["connected"] else 0, w.get("signal"), w.get("rssi"), w.get("channel"), w.get("band"),
+             w.get("rx_mbps"), w.get("tx_mbps"), w.get("ssid"), w.get("bssid")))
+
+
+def wifi_series(conn, start, end, bucket):
+    """[[bucket, สัญญาณเฉลี่ย, ต่ำสุด, จำนวนครั้งที่หลุด, จำนวนตัวอย่าง]]"""
+    return [list(r) for r in conn.execute(
+        """SELECT (ts/?)*?, ROUND(AVG(CASE WHEN connected=1 THEN signal END), 1),
+                  MIN(CASE WHEN connected=1 THEN signal END), SUM(1-connected), COUNT(*)
+           FROM wifi_samples WHERE ts >= ? AND ts < ? GROUP BY 1 ORDER BY 1""",
+        (bucket, bucket, start, end))]
+
+
+def wifi_between(conn, start, end):
+    return [dict(zip(_WIFI_COLS, r)) for r in conn.execute(
+        f"SELECT {', '.join(_WIFI_COLS)} FROM wifi_samples WHERE ts >= ? AND ts < ? ORDER BY ts", (start, end))]
+
+
+def wifi_daily(conn, start, end, tz):
+    """{วัน (UTC ts ของเที่ยงคืนท้องถิ่น): [สัญญาณเฉลี่ย, จำนวนตัวอย่างที่หลุด, ทั้งหมด]}"""
+    return {r[0]: list(r[1:]) for r in conn.execute(
+        """SELECT ((ts+?)/86400)*86400-?, AVG(CASE WHEN connected=1 THEN signal END), SUM(1-connected), COUNT(*)
+           FROM wifi_samples WHERE ts >= ? AND ts < ? GROUP BY 1""", (tz, tz, start, end))}
+
+
+def dns_add(conn, ts, rows):
+    """rows: [(server, kind, ms|None)]"""
+    with conn:
+        conn.executemany("INSERT INTO dns_samples(ts, server, kind, ms) VALUES (?,?,?,?)",
+                         [(ts, s, k, ms) for s, k, ms in rows])
+
+
+def dns_series(conn, start, end, bucket):
+    """{server: {"kind", "points": [[bucket, ms เฉลี่ย, ไม่ตอบ, ทั้งหมด]]}}"""
+    out = {}
+    for server, kind, bk, avg, fail, n in conn.execute(
+            """SELECT server, kind, (ts/?)*?, ROUND(AVG(ms), 1), SUM(ms IS NULL), COUNT(*)
+               FROM dns_samples WHERE ts >= ? AND ts < ? GROUP BY 1, 2, 3 ORDER BY 3""",
+            (bucket, bucket, start, end)):
+        out.setdefault(server, {"kind": kind, "points": []})["points"].append([bk, avg, fail, n])
+    return out
+
+
+def dns_daily(conn, start, end, tz):
+    """{วัน: {kind: [ms เฉลี่ย, ไม่ตอบ, ทั้งหมด]}}"""
+    out = {}
+    for day, kind, avg, fail, n in conn.execute(
+            """SELECT ((ts+?)/86400)*86400-?, kind, AVG(ms), SUM(ms IS NULL), COUNT(*)
+               FROM dns_samples WHERE ts >= ? AND ts < ? GROUP BY 1, 2""", (tz, tz, start, end)):
+        out.setdefault(day, {})[kind] = [avg, fail, n]
+    return out
+
+
+def prune_diag(conn, before):
+    with conn:
+        a = conn.execute("DELETE FROM wifi_samples WHERE ts < ?", (before,)).rowcount
+        b = conn.execute("DELETE FROM dns_samples WHERE ts < ?", (before,)).rowcount
+    return a + b

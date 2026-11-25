@@ -1,4 +1,4 @@
-"""สร้าง static/netpulse.ico (ไอคอนเส้นชีพจรแบบเดียวกับ favicon) ด้วยไลบรารีในตัวเท่านั้น
+"""สร้าง static/netpulse.ico และไอคอน PNG สำหรับมือถือ (PWA) ด้วยไลบรารีในตัวเท่านั้น
 
     python tools/make_icon.py
 
@@ -35,19 +35,21 @@ def _rrect_sd(px, py, size, radius):
     return outside + min(max(qx, qy), 0) - radius
 
 
-def render(size):
-    k = size / 32
-    pts = [(x * k, y * k) for x, y in POINTS]
+def render(size, radius_frac=0.22, inset=0.0):
+    """inset: เว้นขอบให้เส้น (สัดส่วน) — ไอคอนแบบ maskable ต้องอยู่ใน safe zone 80% ตรงกลาง"""
+    k = size * (1 - 2 * inset) / 32
+    off = size * inset
+    pts = [(off + x * k, off + y * k) for x, y in POINTS]
     segs = list(zip(pts, pts[1:]))
     half_w = max(2.4 * k, 1.35) / 2
     glow_w = half_w * 2.8
-    radius = size * 0.22
+    radius = size * radius_frac
     rows = []
     for y in range(size):
         row = bytearray()
         for x in range(size):
             px, py = x + 0.5, y + 0.5
-            sd = _rrect_sd(px, py, size, radius)
+            sd = _rrect_sd(px, py, size, radius) if radius_frac else -size
             a_bg = max(0.0, min(1.0, 0.5 - sd))
             if a_bg == 0:
                 row += b"\0\0\0\0"
@@ -90,6 +92,13 @@ def main():
     with open(OUT, "wb") as f:
         f.write(header + entries + blobs)
     print(f"สร้าง {OUT} ({len(header + entries + blobs):,} bytes, ขนาด {', '.join(map(str, SIZES))})")
+    # ไอคอนสำหรับ "เพิ่มไปยังหน้าจอหลัก" บนมือถือ
+    for name, size, radius, inset in (("icon-192.png", 192, 0.22, 0), ("icon-512.png", 512, 0.22, 0),
+                                      ("apple-touch-icon.png", 180, 0, 0.06), ("icon-maskable-512.png", 512, 0, 0.14)):
+        path = os.path.join(ROOT, "static", name)
+        with open(path, "wb") as f:
+            f.write(png(render(size, radius, inset), size))
+        print(f"สร้าง {path}")
 
 
 if __name__ == "__main__":
