@@ -45,7 +45,7 @@ python autostart.py desktop  :: สร้าง shortcut "Network Pulse" บน 
 
 ## ตั้งค่า
 
-**แก้จากหน้าเว็บ 07 Settings ได้เลย** — บันทึกลง `config.json` ให้ และมีผลทันที
+**แก้จากหน้าเว็บ 09 Settings ได้เลย** — บันทึกลง `config.json` ให้ และมีผลทันที
 ยกเว้นรายการเป้าหมายที่ต้องเปิดโปรแกรมใหม่ (หน้าเว็บจะขึ้นเตือน) · ทุกการแก้ถูกบันทึกไว้ในหน้า Events
 
 ค่าที่เกี่ยวกับความปลอดภัย (รหัสผ่าน, TOTP, `lan_access`, `host`/`port`) แก้จากเว็บไม่ได้ ต้องใช้ `setup_auth.py`
@@ -73,7 +73,7 @@ python autostart.py desktop  :: สร้าง shortcut "Network Pulse" บน 
 python setup_auth.py          :: ตั้งรหัสผ่าน (อย่างน้อย 10 ตัว) + TOTP
 python setup_auth.py --lan on :: เปิดให้มือถือใน Wi-Fi เดียวกันเข้าได้
 ```
-แล้วเปิดโปรแกรมใหม่ — หน้า 06 Security จะแสดงที่อยู่สำหรับมือถือ (เช่น `http://192.168.1.34:8000`)
+แล้วเปิดโปรแกรมใหม่ — หน้า 08 Security จะแสดงที่อยู่สำหรับมือถือ (เช่น `http://192.168.1.34:8000`)
 
 - **TOTP:** สคริปต์จะแสดง **QR Code ในหน้าต่าง terminal** ให้สแกนด้วยแอป Authenticator (มีคีย์ให้พิมพ์เองเป็นทางสำรอง)
   แล้วให้ยืนยันด้วยรหัส 6 หลักก่อนบันทึก — ยืนยันเสร็จจะล้างหน้าจอทันที
@@ -115,14 +115,24 @@ netpulse/config.py     โหลด config.json
 netpulse/pingutil.py   เรียก ping / ipconfig และแปลผล
 netpulse/monitor.py    เธรดวัด + ตรวจหลุด / latency สูง / ช่วงคอมปิด
 netpulse/db.py         SQLite: samples, heartbeat, hourly, events
-netpulse/server.py     http.server: หน้าเว็บ + /api/live, /api/history, /api/events, /api/config
+netpulse/traffic.py    อ่านปริมาณ Download/Upload ของการ์ดเครือข่าย (iphlpapi ผ่าน ctypes)
+netpulse/tools.py      Ping / Traceroute / DNS / Public IP ของหน้า Network Tools
+netpulse/server.py     http.server: หน้าเว็บ + /api/live, /api/overview, /api/history, /api/events, /api/tools/*
 static/                หน้าเว็บ (HTML/CSS/JS + Chart.js จาก CDN)
 tests/                 python -m unittest discover -s tests
 ```
 
 ## หน้าเว็บ
 
-01 Overview · 02 Live Monitor · 03 History (วันนี้ / 24 ชม. / 7 วัน / 30 วัน / เลือกวันเอง) · 04 Events
-05 Compare — วันนี้ vs เมื่อวาน, สัปดาห์นี้ vs สัปดาห์ที่แล้ว (ช่วงเวลาเดียวกัน), 7/30 วัน vs ช่วงก่อนหน้า, กำหนดเอง
-06 Security — สถานะการป้องกัน, ที่อยู่สำหรับมือถือ, อุปกรณ์ที่ login อยู่
-07 Settings — ระยะวัด, เกณฑ์แจ้งเตือน, เป้าหมาย (สูงสุด 8), อายุข้อมูล, อายุการ login
+- **01 Overview** — สถานะรวม, Network Health 24 ชม., Latency เฉลี่ย / Jitter / Packet Loss (10 นาทีล่าสุดเทียบ 10 นาทีก่อนหน้า),
+  Uptime 24 ชม. (เทียบ 24 ชม. ก่อนหน้า), Response ของ router, กราฟ 1m–24h, Connection Path, ปริมาณ Download/Upload ของการ์ดเครือข่าย
+- **02 Live Monitor** — กราฟสดและ ping log
+- **03 Network Tools** — Ping, Traceroute, DNS Lookup, IP Info (ปุ่มตรวจ Public IP ถาม api.ipify.org เฉพาะเมื่อกด)
+- **04 Topology** — แผนผังเครื่องนี้ → router → อินเทอร์เน็ต → เป้าหมาย พร้อม traceroute
+- **05 History & Logs** — วันนี้ / 24 ชม. / 7 วัน / 30 วัน / เลือกวันเอง
+- **06 Events & Alerts** — ตัวเลขสีแดงที่เมนูและจุดแดงที่กระดิ่ง = การหลุด / latency สูง / ล็อก login ที่ยังไม่ได้ดู
+- **07 Compare** — วันนี้ vs เมื่อวาน, สัปดาห์นี้ vs สัปดาห์ที่แล้ว (ช่วงเวลาเดียวกัน), 7/30 วัน vs ช่วงก่อนหน้า, กำหนดเอง
+- **08 Security** — สถานะการป้องกัน, ที่อยู่สำหรับมือถือ, อุปกรณ์ที่ login อยู่
+- **09 Settings** — ระยะวัด, เกณฑ์แจ้งเตือน, เป้าหมาย (สูงสุด 8), อายุข้อมูล, อายุการ login
+
+ช่องค้นหาด้านบน (Ctrl + K): พิมพ์ชื่อเมนู หรือพิมพ์ IP/โดเมนเพื่อ Ping / Traceroute / DNS ได้ทันที

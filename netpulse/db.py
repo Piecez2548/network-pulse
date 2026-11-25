@@ -150,6 +150,31 @@ def history(conn, start, end, bucket, target_ids):
     return series, summary
 
 
+def round_health(conn, start, end, external_ids, threshold_ms, bucket):
+    """นับรอบที่วัดได้ / รอบที่ออกเน็ตได้ / รอบที่ปกติทุกอย่าง แยกเป็นช่วง ๆ ละ bucket วินาที
+
+    ออกเน็ตได้ = มี external อย่างน้อย 1 ตัวตอบ
+    ปกติ = ทุกเป้าหมายที่วัดตอบ และ latency ของ external ไม่เกินเกณฑ์
+    คืน {bucket_start: [rounds, up, healthy]} — ใช้เฉพาะข้อมูลรายรอบ (ช่วงไม่เกิน retention)
+    """
+    ext = list(external_ids) or ["__none__"]
+    marks = ",".join("?" * len(ext))
+    sql = f"""SELECT ts,
+                SUM(CASE WHEN target IN ({marks}) THEN 1 ELSE 0 END),
+                SUM(CASE WHEN target IN ({marks}) AND ok = 1 THEN 1 ELSE 0 END),
+                COUNT(*), SUM(ok),
+                MAX(CASE WHEN target IN ({marks}) THEN latency END)
+              FROM samples WHERE ts >= ? AND ts < ? GROUP BY ts"""
+    out = {}
+    for ts, n_ext, ok_ext, n_all, ok_all, max_ext in conn.execute(sql, (*ext, *ext, *ext, start, end)):
+        cell = out.setdefault((ts // bucket) * bucket, [0, 0, 0])
+        cell[0] += 1
+        up = ok_ext > 0 if n_ext else ok_all > 0
+        cell[1] += up
+        cell[2] += up and ok_all == n_all and (max_ext is None or max_ext <= threshold_ms)
+    return out
+
+
 def beats_between(conn, start, end):
     raw = conn.execute("SELECT COUNT(*) FROM heartbeat WHERE ts >= ? AND ts < ?", (start, end)).fetchone()[0]
     hourly = conn.execute(

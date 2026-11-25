@@ -7,48 +7,71 @@
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
 <div class="app">
   <aside class="sidebar">
-    <div class="brand">
-      <svg viewBox="0 0 32 32" class="brand-mark" aria-hidden="true"><path d="M3 17h6l3-8 5 15 4-11 2 4h6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <div><div class="brand-name">Network Pulse</div><div class="brand-sub">Home Monitor</div></div>
+    <a class="brand" href="#/overview" aria-label="Network Pulse — Overview">
+      <svg viewBox="0 0 40 32" class="brand-mark" aria-hidden="true"><path d="M2 17h8l4-11 6 21 5-15 3 5h10" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><div class="brand-name">Network Pulse</div><div class="brand-sub">Network Intelligence</div></div>
+    </a>
+    <nav class="nav" id="nav" aria-label="เมนูหลัก"></nav>
+    <div class="side-foot">
+      <div class="side-ver mono" id="side-ver">v—</div>
+      <div class="side-agent"><span class="dot" id="agent-dot"></span><span id="agent-text">กำลังเชื่อมต่อ…</span></div>
+      <div class="side-lan mono" id="side-lan"></div>
     </div>
-    <nav class="nav" id="nav"></nav>
-    <div class="sidebar-foot mono" id="side-foot"></div>
+    <svg class="side-wave" viewBox="0 0 270 120" preserveAspectRatio="none" aria-hidden="true">
+      <defs><linearGradient id="wv" x1="0" x2="1"><stop offset="0" stop-color="#41D8EF" stop-opacity=".0"/><stop offset=".5" stop-color="#41D8EF" stop-opacity=".35"/><stop offset="1" stop-color="#7C5CFF" stop-opacity=".1"/></linearGradient></defs>
+      <path d="M0 70 C60 30 110 110 170 70 S250 40 270 55" fill="none" stroke="url(#wv)" stroke-width="1.5"/>
+      <path d="M0 85 C70 50 120 120 180 85 S250 60 270 75" fill="none" stroke="url(#wv)" stroke-width="1"/>
+      <path d="M0 100 C60 75 130 125 190 100 S250 85 270 92 V120 H0Z" fill="#0C2240" opacity=".55"/>
+    </svg>
   </aside>
 
   <main class="main">
     <header class="topbar">
-      <div>
-        <div class="crumb" id="crumb">Network Pulse</div>
+      <div class="title-wrap">
         <h1 id="page-title">Overview</h1>
+        <div class="crumb" id="crumb"><span class="mono">01</span> / ภาพรวมเครือข่าย</div>
+      </div>
+      <div class="search" id="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="search-in" type="search" placeholder="ค้นหาเมนู, IP, หรือเครื่องมือ…" autocomplete="off" spellcheck="false" aria-label="ค้นหา">
+        <kbd>Ctrl + K</kbd>
+        <div class="search-pop" id="search-pop" hidden></div>
       </div>
       <div class="top-actions">
-        <span class="pill pill-unknown" id="overall-pill"><span class="dot"></span><span id="overall-text">Unknown</span></span>
-        <button class="btn" id="notif-btn" type="button">เปิดการแจ้งเตือน</button>
-        <span class="clock mono" id="clock">--:--:--</span>
-        <button class="btn icon-btn" id="logout-btn" type="button" hidden title="ออกจากระบบ">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-          <span>ออกจากระบบ</span>
+        <div class="bell-wrap">
+          <button class="icon-only" id="bell-btn" type="button" aria-label="การแจ้งเตือน" aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>
+            <span class="bell-dot" id="bell-dot" hidden></span>
+          </button>
+          <div class="bell-pop" id="bell-pop" hidden>
+            <div class="bell-head"><b>การแจ้งเตือน</b><button class="link-btn" id="bell-read" type="button">อ่านทั้งหมดแล้ว</button></div>
+            <ul class="ev-list compact" id="bell-list"></ul>
+            <div class="bell-foot">
+              <button class="btn btn-sm" id="notif-btn" type="button">เปิด Browser Notification</button>
+              <a href="#/events" class="link-btn">ดูทั้งหมด →</a>
+            </div>
+          </div>
+        </div>
+        <button class="icon-only" id="logout-btn" type="button" hidden title="ออกจากระบบ" aria-label="ออกจากระบบ">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
         </button>
       </div>
     </header>
+    <div class="subbar">
+      <span class="chip chip-status" id="overall-pill"><span class="dot"></span><span id="overall-text">Unknown</span></span>
+      <span class="chip-group">
+        <span class="chip-time mono" id="clock">--:--:--</span>
+        <span class="chip-date"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span id="date">—</span></span>
+      </span>
+    </div>
     <section class="view" id="view"></section>
   </main>
-
-  <footer class="statusbar" id="statusbar">
-    <span class="sb-item"><span class="dot dot-ok pulse" id="sb-dot"></span><span id="sb-mon">กำลังเชื่อมต่อ…</span></span>
-    <span class="sb-item mono" id="sb-interval"></span>
-    <span class="sb-item mono" id="sb-last"></span>
-    <span class="sb-spacer"></span>
-    <span class="sb-item mono" id="sb-db"></span>
-    <span class="sb-item mono" id="sb-listen"></span>
-    <span class="sb-item mono" id="sb-lan"></span>
-  </footer>
 </div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 

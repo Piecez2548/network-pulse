@@ -2,45 +2,72 @@
 'use strict';
 
 const C = {
-  ok: '#39D6A0', warn: '#EFB65B', crit: '#F0526E', primary: '#41D8EF',
-  text: '#DCE7F5', muted: '#71849E', border: '#203047', surface: '#0E1828',
+  ok: '#39D6A0', warn: '#EFB65B', crit: '#F0526E', primary: '#41D8EF', violet: '#A78BFA',
+  text: '#DCE7F5', muted: '#71849E', border: '#1C2E4A', surface: '#0C1729',
 };
 const TARGET_COLORS = ['#41D8EF', '#A78BFA', '#DCE7F5', '#F9A8D4', '#7DD3FC', '#FCD34D'];
 const POLL_MS = 2000;
 const BUFFER_SEC = 3600;
 
 const ICONS = {
-  overview: '<path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/>',
+  overview: '<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 9.5V20h5v-6h3v6h5V9.5"/>',
   live: '<path d="M2 12h4l3-7 4 14 3-9 2 2h4"/>',
-  history: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>',
+  tools: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M12.5 15H17"/>',
+  topology: '<circle cx="12" cy="5" r="2.2"/><circle cx="5" cy="18" r="2.2"/><circle cx="19" cy="18" r="2.2"/><path d="M11 7 6 16M13 7l5 9M7.2 18h9.6"/>',
+  history: '<path d="M5 20v-8M9.5 20V6M14 20v-9M18.5 20V9"/>',
   events: '<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
-  compare: '<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>',
+  compare: '<path d="m12 3 9 5-9 5-9-5 9-5z"/><path d="m3 13 9 5 9-5"/>',
   security: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  alert: '<path d="M12 8v5M12 16.5h.01"/>',
+  timer: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 1.5M9.5 2.5h5M12 2.5V6"/>',
+  jitter: '<path d="M2 12h3.5l2-5 3 10 3-12 2.5 9 1.5-2H22"/>',
+  loss: '<path d="m12 3 9 4.5-9 4.5-9-4.5L12 3z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/>',
+  trend: '<path d="M3 17l5-5 4 3 8-8"/><path d="M15 7h5v5"/>',
+  expand: '<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/>',
+  shrink: '<path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/>',
+  list: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h1M7 13h1M7 17h1M11 9h6M11 13h6M11 17h6"/>',
+  route: '<circle cx="5" cy="18" r="2"/><circle cx="19" cy="6" r="2"/><path d="M7 18h6a3 3 0 0 0 0-6h-2a3 3 0 0 1 0-6h6"/>',
+  monitor: '<rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/>',
+  router: '<rect x="3" y="13" width="18" height="7" rx="1.5"/><path d="M7 16.5h.01M10.5 16.5h.01M8 13V9.5M16 13V9.5M5.5 7.2a9 9 0 0 1 13 0"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  cloud: '<path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 9.5a4 4 0 0 1-.5 8.5H7z"/>',
+  down: '<path d="M12 4v15M6 13l6 6 6-6"/>',
+  up: '<path d="M12 20V5M6 11l6-6 6 6"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/>',
+  prompt: '<path d="m4 7 5 5-5 5M12 17h8"/>',
+  nodes: '<circle cx="12" cy="4.5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="12" cy="19.5" r="2"/><path d="M10.5 6 6.5 10.5M13.5 6l4 4.5M6.5 13.5l4 4.5M17.5 13.5l-4 4.5"/>',
+  traffic: '<path d="M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4"/>',
 };
-const icon = (id) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[id]}</svg>`;
+const icon = (id, cls = '') => `<svg${cls ? ` class="${cls}"` : ''} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[id] || ''}</svg>`;
 
 const NAV = [
   { id: 'overview', num: '01', label: 'Overview', crumb: 'ภาพรวมเครือข่าย' },
   { id: 'live', num: '02', label: 'Live Monitor', crumb: 'กราฟ latency แบบสด' },
-  { id: 'history', num: '03', label: 'History', crumb: 'ข้อมูลย้อนหลัง' },
-  { id: 'events', num: '04', label: 'Events', crumb: 'บันทึกเหตุการณ์' },
-  { id: 'compare', num: '05', label: 'Compare', crumb: 'เทียบช่วงเวลา' },
-  { id: 'security', num: '06', label: 'Security', crumb: 'การเข้าสู่ระบบและอุปกรณ์' },
-  { id: 'settings', num: '07', label: 'Settings', crumb: 'ตั้งค่าการวัดและการแจ้งเตือน' },
+  { id: 'tools', num: '03', label: 'Network Tools', crumb: 'Ping · Traceroute · DNS · IP' },
+  { id: 'topology', num: '04', label: 'Topology', crumb: 'เส้นทางจากเครื่องนี้ถึงอินเทอร์เน็ต' },
+  { id: 'history', num: '05', label: 'History & Logs', crumb: 'ข้อมูลย้อนหลัง' },
+  { id: 'events', num: '06', label: 'Events & Alerts', crumb: 'บันทึกเหตุการณ์และการแจ้งเตือน', badge: true },
+  { id: 'compare', num: '07', label: 'Compare', crumb: 'เทียบช่วงเวลา' },
+  { id: 'security', num: '08', label: 'Security', crumb: 'การเข้าสู่ระบบและอุปกรณ์' },
+  { id: 'settings', num: '09', label: 'Settings', crumb: 'ตั้งค่าการวัดและการแจ้งเตือน', sep: true },
 ];
 
 const KIND = {
   down: { label: 'หลุด', title: 'การเชื่อมต่อหลุด', color: C.crit, dot: 'dot-crit' },
   up: { label: 'กลับมา', title: 'เชื่อมต่อกลับมาแล้ว', color: C.ok, dot: 'dot-ok' },
   high_latency: { label: 'Latency สูง', title: 'Latency สูง', color: C.warn, dot: 'dot-warn' },
-  latency_ok: { label: 'Latency ปกติ', title: 'Latency กลับเป็นปกติ', color: C.primary, dot: '' },
-  gap: { label: 'ไม่มีข้อมูล', title: 'ช่วงที่ไม่มีข้อมูล', color: C.muted, dot: '' },
-  auth: { label: 'เข้าสู่ระบบ', title: 'มีการเข้าสู่ระบบ', color: C.primary, dot: '' },
+  latency_ok: { label: 'Latency ปกติ', title: 'Latency กลับเป็นปกติ', color: C.ok, dot: 'dot-ok' },
+  gap: { label: 'ไม่มีข้อมูล', title: 'ช่วงที่ไม่มีข้อมูล', color: C.ok, dot: 'dot-ok' },
+  auth: { label: 'เข้าสู่ระบบ', title: 'มีการเข้าสู่ระบบ', color: C.primary, dot: 'dot-info' },
   auth_lock: { label: 'ล็อก login', title: 'ใส่รหัสผิดหลายครั้ง', color: C.crit, dot: 'dot-crit' },
-  settings: { label: 'ตั้งค่า', title: 'แก้การตั้งค่า', color: C.text, dot: '' },
+  settings: { label: 'ตั้งค่า', title: 'แก้การตั้งค่า', color: C.text, dot: 'dot-info' },
 };
 const QUIET_KINDS = new Set(['gap', 'auth', 'settings']);  // แสดงเป็น toast เท่านั้น ไม่ส่ง Browser Notification
+const ALERT_KINDS = new Set(['down', 'high_latency', 'auth_lock']);  // นับเป็น "ยังไม่ได้อ่าน" ที่กระดิ่ง
 const STATUS_TEXT = { online: 'Online', degraded: 'Degraded', offline: 'Offline', unknown: 'Unknown' };
 const STATUS_TH = { online: 'ออนไลน์', degraded: 'ไม่เสถียร', offline: 'ออฟไลน์', unknown: 'ไม่ทราบสถานะ' };
 
@@ -50,6 +77,9 @@ const S = {
   ids: [],
   rounds: [],          // [ts, lat0, lat1, ...]  (null = ไม่ตอบ, "x" = ไม่ได้วัด)
   status: null,
+  traffic: null,
+  overview: null,      // ผล /api/overview (สถิติ 24 ชม.)
+  recentEvents: [],
   lastTs: 0,
   lastEventId: null,
   connected: false,
@@ -81,10 +111,20 @@ function fmtDur(sec) {
   return `${sec} วินาที`;
 }
 function fmtBytes(b) { return b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
+function fmtRate(bps) {
+  if (bps === null || bps === undefined) return ['—', ''];
+  if (bps >= 1e9) return [(bps / 1e9).toFixed(2), 'Gbps'];
+  if (bps >= 1e6) return [(bps / 1e6).toFixed(bps >= 1e8 ? 0 : 1), 'Mbps'];
+  return [(bps / 1e3).toFixed(bps >= 1e5 ? 0 : 1), 'Kbps'];
+}
 const thr = () => S.cfg?.latency_threshold_ms ?? 200;
 const msClass = (v) => v === null ? 'crit' : v > thr() ? 'warn' : '';
 const targetName = (id) => S.cfg?.targets.find((t) => t.id === id)?.name ?? id;
 const targetColor = (i) => TARGET_COLORS[i % TARGET_COLORS.length];
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (_) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (_) { /* private mode */ } },
+};
 
 function toLogin() { location.replace('/login'); }
 
@@ -126,14 +166,45 @@ function windowValues(i, startTs) {
   }
   return out;
 }
+/** index ของเป้าหมายภายนอก (ไม่ใช่ gateway) และของ gateway */
+const extIdx = () => (S.status?.targets ?? []).map((t, i) => (t.kind !== 'gateway' ? i : -1)).filter((i) => i >= 0);
+const gwIdx = () => (S.status?.targets ?? []).findIndex((t) => t.kind === 'gateway');
+
+/** สถิติจาก rounds แบ่งเป็นช่อง ๆ ละ step วินาที เริ่มที่ start จำนวน count ช่อง (วนข้อมูลรอบเดียว) */
+function bucketStats(start, step, count) {
+  const ext = new Set(extIdx()), gw = gwIdx();
+  const cells = Array.from({ length: count }, () => ({ sum: 0, n: 0, fail: 0, total: 0, jsum: 0, jn: 0, gsum: 0, gn: 0 }));
+  const prev = {};
+  for (const r of S.rounds) {
+    const k = Math.floor((r[0] - start) / step);
+    if (k < 0 || k >= count) continue;
+    const c = cells[k];
+    S.ids.forEach((_, i) => {
+      const v = r[1 + i];
+      if (v === 'x') return;
+      c.total++;
+      if (v === null) { c.fail++; prev[i] = null; return; }
+      if (ext.has(i)) {
+        c.sum += v; c.n++;
+        if (prev[i] !== undefined && prev[i] !== null) { c.jsum += Math.abs(v - prev[i]); c.jn++; }
+      }
+      if (i === gw) { c.gsum += v; c.gn++; }
+      prev[i] = v;
+    });
+  }
+  return cells.map((c) => ({
+    avg: c.n ? c.sum / c.n : null, jitter: c.jn ? c.jsum / c.jn : null,
+    loss: c.total ? 100 * c.fail / c.total : null, gw: c.gn ? c.gsum / c.gn : null,
+  }));
+}
 
 /* ---------- charts ---------- */
 const chartReady = () => typeof window.Chart !== 'undefined';
 if (chartReady()) {
-  Chart.defaults.color = C.muted;
-  Chart.defaults.borderColor = 'rgba(32,48,71,.6)';
-  Chart.defaults.font.family = '"JetBrains Mono", Consolas, monospace';
-  Chart.defaults.font.size = 11;
+  Chart.defaults.color = '#9FB0C6';
+  Chart.defaults.borderColor = 'rgba(28,46,74,.6)';
+  Chart.defaults.font.family = 'Inter, "Noto Sans Thai", sans-serif';
+  Chart.defaults.font.size = 12;
 }
 
 const thresholdPlugin = {
@@ -155,38 +226,81 @@ const thresholdPlugin = {
     ctx.restore();
   },
 };
+/** เส้นเรืองแสงตามสีของเส้น */
+const glowPlugin = {
+  id: 'glow',
+  beforeDatasetDraw(chart, args) {
+    const ds = chart.data.datasets[args.index];
+    if (ds.isFail || ds.yAxisID === 'y1') return;
+    chart.ctx.save();
+    chart.ctx.shadowColor = ds.borderColor;
+    chart.ctx.shadowBlur = 8;
+  },
+  afterDatasetDraw(chart, args) {
+    const ds = chart.data.datasets[args.index];
+    if (ds.isFail || ds.yAxisID === 'y1') return;
+    chart.ctx.restore();
+  },
+};
+/** หน้าเว็บใช้ CSS zoom (75% บนจอคอม) ซึ่ง Chart.js คำนวณตำแหน่งเมาส์ผิด
+ *  จึงคำนวณใหม่จาก clientX/Y เทียบกับขนาดจริงของ canvas บนจอ (ถูกทั้งตอนมีและไม่มี zoom) */
+const zoomFixPlugin = {
+  id: 'zoomFix',
+  beforeEvent(chart, args) {
+    const e = args.event, n = e.native;
+    if (args.replay || !n || n.clientX === undefined) return;
+    const r = chart.canvas.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    e.x = (n.clientX - r.left) * chart.width / r.width;
+    e.y = (n.clientY - r.top) * chart.height / r.height;
+    const a = chart.chartArea;
+    args.inChartArea = e.x >= a.left && e.x <= a.right && e.y >= a.top && e.y <= a.bottom;
+  },
+};
+/** พื้นไล่สีใต้เส้น */
+function areaFill(color) {
+  return (ctx) => {
+    const a = ctx.chart.chartArea;
+    if (!a) return color + '00';
+    const g = ctx.chart.ctx.createLinearGradient(0, a.top, 0, a.bottom);
+    g.addColorStop(0, color + '30');
+    g.addColorStop(1, color + '00');
+    return g;
+  };
+}
 
-function makeChart(canvas, { lossAxis = false, tooltipFmt = 'd MMM HH:mm:ss' } = {}) {
+function makeChart(canvas, { lossAxis = false, tooltipFmt = 'd MMM HH:mm:ss', legend = true } = {}) {
   if (!chartReady()) {
     canvas.insertAdjacentHTML('afterend', '<div class="chart-msg">โหลด Chart.js ไม่ได้<br>ต้องต่ออินเทอร์เน็ตตอนเปิดหน้าเว็บ</div>');
     return null;
   }
+  const grid = { color: 'rgba(28,46,74,.55)' };
   const scales = {
     x: {
       type: 'time',
       time: { tooltipFormat: tooltipFmt, displayFormats: { second: 'HH:mm:ss', minute: 'HH:mm', hour: 'HH:mm', day: 'd MMM' } },
-      ticks: { maxRotation: 0, autoSkipPadding: 24 },
-      grid: { color: 'rgba(32,48,71,.45)' },
+      ticks: { maxRotation: 0, autoSkipPadding: 28 },
+      grid, border: { display: false },
     },
     y: {
       beginAtZero: true,
       grace: '10%',
-      ticks: { callback: (v) => `${v} ms` },
-      grid: { color: 'rgba(32,48,71,.45)' },
+      ticks: { callback: (v) => `${v} ms`, maxTicksLimit: 7 },
+      grid, border: { display: false },
     },
   };
   if (lossAxis) {
     scales.y1 = {
       position: 'right', min: 0, max: 100,
       ticks: { callback: (v) => `${v}%`, stepSize: 25 },
-      grid: { display: false },
+      grid: { display: false }, border: { display: false },
       title: { display: true, text: 'loss', color: C.muted },
     };
   }
   return new Chart(canvas, {
     type: 'line',
     data: { datasets: [] },
-    plugins: [thresholdPlugin],
+    plugins: [zoomFixPlugin, thresholdPlugin, glowPlugin],
     options: {
       responsive: true,
       maintainAspectRatio: false,
@@ -195,15 +309,16 @@ function makeChart(canvas, { lossAxis = false, tooltipFmt = 'd MMM HH:mm:ss' } =
       normalized: true,
       spanGaps: false,
       interaction: { mode: 'nearest', axis: 'x', intersect: false },
-      elements: { point: { radius: 0, hoverRadius: 3 }, line: { borderWidth: 1.6, tension: 0.25 } },
+      elements: { point: { radius: 0, hoverRadius: 3 }, line: { borderWidth: 1.8, tension: 0.3 } },
       scales,
       plugins: {
         legend: {
+          display: legend,
           position: 'top', align: 'end',
-          labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true, pointStyle: 'rectRounded', font: { family: 'Inter, "Noto Sans Thai", sans-serif', size: 12 } },
+          labels: { boxWidth: 9, boxHeight: 9, usePointStyle: true, pointStyle: 'circle', font: { size: 12.5 } },
         },
         tooltip: {
-          backgroundColor: '#122036', borderColor: C.border, borderWidth: 1,
+          backgroundColor: '#10203A', borderColor: '#2A4570', borderWidth: 1,
           titleColor: C.text, bodyColor: C.text, padding: 10,
           callbacks: {
             label(ctx) {
@@ -257,11 +372,49 @@ function sparkline(canvas, values, color) {
   flush();
 }
 
+/** sparkline แบบเส้นโค้งเรืองแสง ปรับสเกลตามช่วงค่าจริง (null = ข้าม) */
+function miniSpark(canvas, values, color, { minSpan = 1, fill = true, floor = null } = {}) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (!w || !h) return;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+  const pts = values.map((v, k) => [k, v]).filter(([, v]) => v !== null && v !== undefined);
+  if (pts.length < 2) return;
+  let lo = Math.min(...pts.map((p) => p[1])), hi = Math.max(...pts.map((p) => p[1]));
+  if (floor !== null) lo = Math.min(lo, floor);
+  if (hi - lo < minSpan) { const mid = (hi + lo) / 2; lo = mid - minSpan / 2; hi = mid + minSpan / 2; }
+  const step = w / Math.max(1, values.length - 1);
+  const xy = pts.map(([k, v]) => [k * step, h - 3 - ((v - lo) / (hi - lo)) * (h - 8)]);
+  const path = () => {
+    ctx.beginPath();
+    ctx.moveTo(xy[0][0], xy[0][1]);
+    for (let i = 1; i < xy.length; i++) {
+      const [x0, y0] = xy[i - 1], [x1, y1] = xy[i];
+      const mx = (x0 + x1) / 2;
+      ctx.bezierCurveTo(mx, y0, mx, y1, x1, y1);
+    }
+  };
+  if (fill) {
+    path();
+    ctx.lineTo(xy[xy.length - 1][0], h); ctx.lineTo(xy[0][0], h); ctx.closePath();
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, color + '55'); g.addColorStop(1, color + '00');
+    ctx.fillStyle = g; ctx.fill();
+  }
+  path();
+  ctx.strokeStyle = color; ctx.lineWidth = 1.6;
+  ctx.shadowColor = color; ctx.shadowBlur = 6;
+  ctx.stroke();
+}
+
 /** แปลง rounds ในช่วงเวลา เป็น datasets ของ Chart.js (เว้นช่องเมื่อขาดข้อมูล) */
-function liveDatasets(startTs) {
+function liveDatasets(startTs, { fill = false, fails = true } = {}) {
   const gapSec = Math.max(3 * (S.cfg?.interval_sec ?? 2), 6);
   const sets = [];
-  const fails = [];
+  const failPts = [];
   S.ids.forEach((id, i) => {
     const data = [];
     let prev = null;
@@ -271,20 +424,23 @@ function liveDatasets(startTs) {
       if (v === 'x') continue;
       if (prev !== null && r[0] - prev > gapSec) data.push({ x: (prev + 1) * 1000, y: null });
       data.push({ x: r[0] * 1000, y: v });
-      if (v === null) fails.push({ x: r[0] * 1000, y: 0 });
+      if (v === null) failPts.push({ x: r[0] * 1000, y: 0 });
       prev = r[0];
     }
-    sets.push({ label: targetName(id), data, borderColor: targetColor(i), backgroundColor: targetColor(i) });
+    const col = targetColor(i);
+    sets.push({ label: targetName(id), data, borderColor: col, backgroundColor: fill ? areaFill(col) : col, fill: fill ? 'origin' : false });
   });
-  sets.push({
-    label: 'ไม่ตอบ', isFail: true, data: fails, showLine: false,
-    pointStyle: 'crossRot', pointRadius: 5, pointHoverRadius: 6, borderWidth: 2,
-    borderColor: C.crit, backgroundColor: C.crit,
-  });
+  if (fails) {
+    sets.push({
+      label: 'ไม่ตอบ', isFail: true, data: failPts, showLine: false,
+      pointStyle: 'crossRot', pointRadius: 5, pointHoverRadius: 6, borderWidth: 2,
+      borderColor: C.crit, backgroundColor: C.crit,
+    });
+  }
   return sets;
 }
 
-/* ---------- notifications & toasts ---------- */
+/* ---------- notifications, toasts & bell ---------- */
 function toast(ev) {
   const k = KIND[ev.kind] || KIND.gap;
   const el = document.createElement('div');
@@ -295,6 +451,36 @@ function toast(ev) {
   box.appendChild(el);
   while (box.children.length > 4) box.firstChild.remove();
   setTimeout(() => el.remove(), 9000);
+}
+
+const seenId = () => Number(store.get('np_seen_event') || 0);
+function unreadAlerts() { return S.recentEvents.filter((e) => e.id > seenId() && ALERT_KINDS.has(e.kind)).length; }
+function markSeen() {
+  const max = S.recentEvents.reduce((m, e) => Math.max(m, e.id), 0);
+  if (max > seenId()) store.set('np_seen_event', String(max));
+  renderBadges();
+}
+function renderBadges() {
+  const n = unreadAlerts();
+  $('#bell-dot').hidden = n === 0;
+  const b = $('#nav-badge-events');
+  if (b) { b.hidden = n === 0; b.textContent = n > 99 ? '99+' : String(n); }
+  if (!$('#bell-pop').hidden) renderBellList();
+}
+function renderBellList() {
+  const seen = seenId();
+  const list = S.recentEvents.slice(0, 8);
+  $('#bell-list').innerHTML = list.length
+    ? list.map((e) => eventItem(e, e.id > seen && ALERT_KINDS.has(e.kind))).join('')
+    : '<div class="empty">ยังไม่มีเหตุการณ์</div>';
+}
+async function loadRecentEvents() {
+  try {
+    const d = await getJSON('/api/events?limit=30');
+    S.recentEvents = d.events;
+    renderBadges();
+    page?.onRecent?.();
+  } catch (_) { /* ลองใหม่รอบหน้า */ }
 }
 
 function onEvents(events) {
@@ -310,7 +496,11 @@ function onEvents(events) {
       }
     } catch (_) { /* บางเบราว์เซอร์ (มือถือ) ไม่รองรับ new Notification */ }
   }
+  const known = new Set(S.recentEvents.map((e) => e.id));
+  S.recentEvents = [...events.filter((e) => !known.has(e.id)).reverse(), ...S.recentEvents].slice(0, 30);
+  if (currentId === 'events') markSeen(); else renderBadges();
   page?.onEvents?.(events);
+  page?.onRecent?.();
 }
 
 function renderNotifButton() {
@@ -326,7 +516,7 @@ function renderNotifButton() {
   const p = Notification.permission;
   btn.classList.toggle('on', p === 'granted');
   btn.classList.toggle('blocked', p === 'denied');
-  btn.textContent = p === 'granted' ? '🔔 แจ้งเตือน: เปิด' : p === 'denied' ? 'แจ้งเตือนถูกบล็อก' : 'เปิดการแจ้งเตือน';
+  btn.textContent = p === 'granted' ? 'Browser Notification: เปิด' : p === 'denied' ? 'Notification ถูกบล็อก' : 'เปิด Browser Notification';
   btn.title = p === 'denied' ? 'อนุญาตการแจ้งเตือนให้เว็บนี้ได้ที่ไอคอนแม่กุญแจในแถบที่อยู่' : '';
 }
 
@@ -339,6 +529,7 @@ async function poll() {
     S.ids = d.targets;
     S.status = d.status;
     S.serverNow = d.now;
+    S.traffic = d.traffic;
     for (const r of d.rounds) {
       if (r[0] > S.lastTs) { S.rounds.push(r); S.lastTs = r[0]; }
     }
@@ -360,38 +551,50 @@ async function poll() {
 async function loadConfig() {
   try {
     S.cfg = await getJSON('/api/config');
-    $('#sb-db').textContent = `DB ${fmtBytes(S.cfg.db_bytes)}`;
-    $('#sb-listen').textContent = S.cfg.listen;
-    $('#sb-interval').textContent = `ทุก ${S.cfg.interval_sec} วินาที · เตือนเมื่อ > ${S.cfg.latency_threshold_ms} ms`;
-    $('#side-foot').textContent = `v${S.cfg.version} · Phase 2`;
+    $('#side-ver').textContent = `v${S.cfg.version}  •  Phase 2`;
     $('#logout-btn').hidden = !S.cfg.auth_enabled;
     const lan = S.cfg.lan;
-    $('#sb-lan').textContent = lan.bound ? `LAN ${lan.ip}:${S.cfg.listen.split(':').pop()}` : '';
+    $('#side-lan').textContent = lan.bound ? `มือถือ: ${lan.ip}:${S.cfg.listen.split(':').pop()}` : '';
+    $('.side-foot').title = `วัดทุก ${S.cfg.interval_sec} วินาที · เตือนเมื่อ > ${S.cfg.latency_threshold_ms} ms\nDB ${fmtBytes(S.cfg.db_bytes)} · ${S.cfg.listen}`;
   } catch (_) { /* จะลองใหม่รอบถัดไป */ }
 }
 
-function renderChrome() {
-  const pill = $('#overall-pill');
-  const st = S.connected ? (S.status?.overall?.status ?? 'unknown') : 'unknown';
-  pill.className = `pill pill-${st}`;
-  pill.querySelector('.dot').classList.toggle('pulse', st === 'online');
-  $('#overall-text').textContent = S.connected ? STATUS_TEXT[st] : 'ไม่เชื่อมต่อเซิร์ฟเวอร์';
+async function loadOverview() {
+  try {
+    S.overview = await getJSON('/api/overview');
+    page?.onOverview?.();
+  } catch (_) { /* ลองใหม่รอบหน้า */ }
+}
 
-  const dot = $('#sb-dot');
+function overallState() {
+  return S.connected ? (S.status?.overall?.status ?? 'unknown') : 'unknown';
+}
+
+function renderChrome() {
+  const st = overallState();
+  const pill = $('#overall-pill');
+  pill.className = `chip chip-status st-${st}`;
+  pill.querySelector('.dot').classList.toggle('pulse', st === 'online');
+  $('#overall-text').textContent = S.connected ? STATUS_TEXT[st] : 'ไม่เชื่อมต่อ';
+
   const beat = S.status?.last_beat;
   const alive = S.connected && beat && S.serverNow - beat <= 3 * (S.cfg?.interval_sec ?? 2) + 3;
-  dot.className = `dot ${alive ? 'dot-ok pulse' : 'dot-crit'}`;
-  $('#sb-mon').textContent = !S.connected ? 'ติดต่อเซิร์ฟเวอร์ไม่ได้ — โปรแกรมปิดอยู่?'
-    : alive ? `กำลังเฝ้าระวัง ${S.ids.length} เป้าหมาย` : 'ตัววัดไม่ทำงาน';
-  $('#sb-last').textContent = beat ? `วัดล่าสุด ${fmtClock(beat)}` : '';
+  $('#agent-dot').className = `dot ${alive ? 'dot-ok pulse' : 'dot-crit'}`;
+  $('#agent-text').textContent = !S.connected ? 'ติดต่อโปรแกรมไม่ได้' : alive ? 'Local Agent Active' : 'ตัววัดไม่ทำงาน';
+}
+
+function tickClock() {
+  const now = new Date();
+  $('#clock').textContent = fmtClock(nowSec());
+  $('#date').textContent = now.toLocaleDateString('th-TH-u-ca-gregory', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 /* ---------- shared fragments ---------- */
-function eventItem(e) {
+function eventItem(e, unread = false) {
   const k = KIND[e.kind] || KIND.gap;
-  const when = e.kind === 'gap' && e.ts_end ? `${fmtDT(e.ts)} → ${fmtClock(e.ts_end)}` : fmtDT(e.ts);
-  return `<li><span class="dot ${k.dot}" style="${k.dot ? '' : `background:${k.color}`}"></span>
-    <div><div class="ev-msg">${esc(e.message)}</div><div class="ev-time">${when}</div></div></li>`;
+  const when = e.kind === 'gap' && e.ts_end ? `${fmtDT(e.ts)} – ${fmtClock(e.ts_end)}` : fmtDT(e.ts);
+  return `<li class="${unread ? 'unread' : ''}"><span class="dot ${k.dot}"></span>
+    <div><div class="ev-msg" title="${esc(e.message)}">${esc(e.message)}</div><div class="ev-time">${when}</div></div></li>`;
 }
 function statePill(t) {
   if (t.state === 'down') return '<span class="pill pill-offline"><span class="dot"></span>Offline</span>';
@@ -400,6 +603,14 @@ function statePill(t) {
   if (t.fail_streak > 0) return '<span class="pill pill-degraded"><span class="dot"></span>Packet loss</span>';
   return '<span class="pill pill-online"><span class="dot pulse"></span>Online</span>';
 }
+/** สถานะของเป้าหมาย: 'ok' | 'warn' | 'down' | 'unknown' */
+function tState(t) {
+  if (!t || t.state === 'unknown') return 'unknown';
+  if (t.state === 'down') return 'down';
+  if (t.high || t.fail_streak > 0) return 'warn';
+  return 'ok';
+}
+const freshMs = (t) => (t && t.ts && S.serverNow - t.ts < 10 ? t.ms : undefined);
 
 function targetCards(container, windowSec, labelTh) {
   const ts = S.status?.targets ?? [];
@@ -441,20 +652,22 @@ function dotsIfSparse(data) {
 }
 
 /** แปลงผล /api/history เป็น datasets: เส้น latency เฉลี่ย + พื้นที่ packet loss */
-function historyDatasets(h) {
+function historyDatasets(h, { loss = true, fill = false } = {}) {
   const sets = [];
   const lossByBucket = new Map();
   h.targets.forEach((id, i) => {
     const data = [];
     let prev = null;
-    for (const [bk, avg, , loss] of h.series[id]) {
+    for (const [bk, avg, , ls] of h.series[id]) {
       if (prev !== null && bk - prev > h.bucket * 1.5) data.push({ x: (prev + h.bucket) * 1000, y: null });
       data.push({ x: bk * 1000, y: avg });
-      lossByBucket.set(bk, Math.max(lossByBucket.get(bk) ?? 0, loss ?? 0));
+      lossByBucket.set(bk, Math.max(lossByBucket.get(bk) ?? 0, ls ?? 0));
       prev = bk;
     }
-    sets.push({ label: targetName(id), data, borderColor: targetColor(i), backgroundColor: targetColor(i), pointRadius: dotsIfSparse(data) });
+    const col = targetColor(i);
+    sets.push({ label: targetName(id), data, borderColor: col, backgroundColor: fill ? areaFill(col) : col, fill: fill ? 'origin' : false, pointRadius: dotsIfSparse(data) });
   });
+  if (!loss) return sets;
   const lossData = [];
   let prev = null;
   for (const bk of [...lossByBucket.keys()].sort((a, b) => a - b)) {
@@ -483,91 +696,386 @@ function summaryTotals(h) {
   return { n, health: n ? 100 * ok / n : null, avg: okLat ? sumLat / okLat : null, max, outages };
 }
 
+/** การ์ดหัวข้อพร้อมไอคอน */
+/* นับตัวเลขขึ้น/ลงแบบนุ่มๆ (ไม่ใช้ requestAnimationFrame ตอนแท็บซ่อน/ลดการเคลื่อนไหว) */
+const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function tweenNum(el, to, fmt, ms = 700) {
+  if (!el) return;
+  cancelAnimationFrame(el._raf);
+  if (to === null || to === undefined) { el.textContent = '—'; el._v = null; return; }
+  const from = el._v;
+  el._v = to;
+  if (REDUCED_MOTION || document.hidden || from === null || from === undefined || from === to) {
+    if (from === undefined || from === null) {  // ครั้งแรก: นับจาก 0
+      if (REDUCED_MOTION || document.hidden) { el.textContent = fmt(to); return; }
+      return tweenFrom(el, 0, to, fmt, ms * 1.4);
+    }
+    el.textContent = fmt(to);
+    return;
+  }
+  tweenFrom(el, from, to, fmt, ms);
+}
+function tweenFrom(el, from, to, fmt, ms) {
+  const t0 = performance.now();
+  const step = (t) => {
+    const k = Math.min(1, (t - t0) / ms);
+    const e = 1 - Math.pow(1 - k, 3);
+    el.textContent = fmt(from + (to - from) * e);
+    if (k < 1) el._raf = requestAnimationFrame(step);
+  };
+  el._raf = requestAnimationFrame(step);
+  el.textContent = fmt(from);
+  // กันค้าง: ถ้าเฟรมไม่วิ่ง (เช่นแท็บถูกพักไว้) ให้แสดงค่าจริงเมื่อครบเวลา
+  clearTimeout(el._tmo);
+  el._tmo = setTimeout(() => { if (el._v === to) { cancelAnimationFrame(el._raf); el.textContent = fmt(to); } }, ms + 150);
+}
+
+const cardTitle = (ic, html) => `<div class="card-title">${icon(ic, 'ct-ico')}<span>${html}</span></div>`;
+
 /* ---------- pages ---------- */
 const PAGES = {};
 
+/* ---------- 01 Overview ---------- */
 PAGES.overview = () => {
-  let chart = null, updCards = null, hist = null, timers = [];
-  const loadHistory = async () => {
+  let chart = null, range = 60, hist24 = null, timers = [], expanded = false;
+  const KWIN = 600;        // เทียบ 10 นาทีล่าสุดกับ 10 นาทีก่อนหน้า
+  const SPARK_STEP = 120;  // sparkline: ช่องละ 2 นาที ย้อนหลัง 1 ชม.
+
+  const deltaHtml = (cur, prev, { unit = 'ms', pp = false, lowerIsBetter = true, digits = 1 } = {}) => {
+    if (cur === null || prev === null || cur === undefined || prev === undefined) return '&nbsp;';
+    const diff = cur - prev;
+    if (Math.abs(diff) < (pp ? 0.005 : 0.05)) return '= ไม่เปลี่ยนแปลง';
+    const arrow = diff < 0 ? '▼' : '▲';
+    const cls = (diff < 0) === lowerIsBetter ? 'good' : 'bad';
+    const sign = diff > 0 ? '+' : '';
+    const txt = pp ? `${sign}${diff.toFixed(2)}%` : `${sign}${diff.toFixed(digits)} ${unit}` + (prev ? ` (${sign}${(diff / prev * 100).toFixed(1)}%)` : '');
+    return `<span class="${cls}">${arrow} ${txt}</span>`;
+  };
+
+  const kpiCard = (key, ic, label) => `
+    <div class="card kcard" id="k-${key}">
+      <div class="kcard-top">
+        <div class="kico">${icon(ic)}</div>
+        <div style="min-width:0"><div class="klabel">${label}</div><div class="kval js-v">—</div><div class="kdelta js-d">&nbsp;</div></div>
+      </div>
+      <canvas class="kspark"></canvas>
+    </div>`;
+  const setKpi = (key, valHtml, deltaH, spark, sparkOpts = {}, cls = '') => {
+    const card = $(`#k-${key}`);
+    if (!card) return;
+    const v = card.querySelector('.js-v');
+    const changed = v.innerHTML !== valHtml && v.textContent !== '—';
+    v.innerHTML = valHtml;
+    v.className = `kval js-v ${cls}`;
+    if (changed) { void v.offsetWidth; v.classList.add('tick'); }
+    const d = card.querySelector('.js-d');
+    d.innerHTML = deltaH;
+    d.className = `kdelta js-d ${deltaH.includes('class="good"') ? 'good' : deltaH.includes('class="bad"') ? 'bad' : ''}`;
+    miniSpark(card.querySelector('.kspark'), spark, C.primary, sparkOpts);
+  };
+
+  function renderKpis() {
+    const end = S.serverNow;
+    const [prev, cur] = bucketStats(end - 2 * KWIN, KWIN, 2);
+    const sp = bucketStats(end - 3600, SPARK_STEP, 3600 / SPARK_STEP);
+    setKpi('lat', cur.avg === null ? '—' : `${fmtMs(cur.avg)}<small>ms</small>`, deltaHtml(cur.avg, prev.avg),
+      sp.map((c) => c.avg), {}, cur.avg !== null && cur.avg > thr() ? 'warn' : '');
+    setKpi('jit', cur.jitter === null ? '—' : `${cur.jitter.toFixed(1)}<small>ms</small>`, deltaHtml(cur.jitter, prev.jitter),
+      sp.map((c) => c.jitter), { minSpan: 0.5 });
+    const lossTxt = cur.loss === null ? '—' : `${cur.loss.toFixed(2)}<small>%</small>`;
+    const lossDelta = cur.loss === null ? '&nbsp;' : cur.loss === 0 && (prev.loss ?? 0) === 0 ? '= ไม่มีการสูญหาย'
+      : deltaHtml(cur.loss, prev.loss ?? 0, { pp: true });
+    setKpi('loss', lossTxt, lossDelta, sp.map((c) => c.loss), { minSpan: 2, floor: 0 }, cur.loss > 0 ? 'crit' : '');
+    const gi = gwIdx();
+    const gt = S.status?.targets?.[gi];
+    const gms = freshMs(gt);
+    let fastest = gt, fms = gms;
+    if (gi < 0) {  // ไม่มี gateway: ใช้ตัวที่เร็วสุด
+      (S.status?.targets ?? []).forEach((t) => { const m = freshMs(t); if (m !== undefined && m !== null && (fms === undefined || fms === null || m < fms)) { fastest = t; fms = m; } });
+    }
+    setKpi('resp', fms === undefined ? '—' : fms === null ? 'timeout' : `${fmtMs(fms)}<small>ms</small>`,
+      `<span style="color:#C9D5E6">${esc(gi >= 0 ? 'Default Gateway' : fastest?.name ?? '')}</span>`,
+      sp.map((c) => c.gw), {}, fms === null ? 'crit' : '');
+    renderUptime();
+  }
+
+  function renderUptime() {
+    const o = S.overview;
+    if (!o) return;
+    setKpi('up', o.uptime_24h === null ? '—' : `${o.uptime_24h.toFixed(2)}<small>%</small>`,
+      deltaHtml(o.uptime_24h, o.uptime_prev_24h, { pp: true, lowerIsBetter: false }),
+      // เริ่มจากชั่วโมงแรกที่มีข้อมูล ไม่งั้นช่วงที่ยังไม่ได้เปิดโปรแกรมจะเป็นที่ว่าง
+      (() => { const v = o.uptime_series.map((p) => p[1]); const f = v.findIndex((x) => x !== null); return f < 0 ? [] : v.slice(Math.min(f, v.length - 2)); })(),
+      { minSpan: 0.5 }, o.uptime_24h !== null && o.uptime_24h < 99 ? 'warn' : '');
+    const h = o.health_24h;
+    tweenNum($('#ov-health'), h, (x) => `${x.toFixed(2)}%`);
+    $('#ov-health-bar').style.width = `${h ?? 0}%`;
+    $('#ov-health-bar').style.background = h === null || h >= 99 ? '' : h >= 95 ? C.warn : C.crit;
+    $('#ov-health-wrap').title = `สัดส่วนรอบที่ทุกเป้าหมายตอบและ latency ไม่เกิน ${thr()} ms\nนับเฉพาะเวลาที่โปรแกรมทำงาน (${fmtDur(o.monitored_sec_24h)} ใน 24 ชม.)`;
+  }
+
+  function renderHero() {
+    const st = overallState();
+    const map = {
+      online: ['', 'check', 'เครือข่ายทำงานปกติ', 'การเชื่อมต่อมีความเสถียร และอยู่ในเกณฑ์ที่ดี'],
+      degraded: ['warn', 'alert', 'เครือข่ายไม่เสถียร', S.status?.overall?.detail],
+      offline: ['crit', 'alert', 'อินเทอร์เน็ตหลุด', S.status?.overall?.detail],
+      unknown: ['unknown', 'clock', 'กำลังเริ่มวัด…', S.status?.overall?.detail],
+    };
+    let [cls, ic, title, detail] = map[st] || map.unknown;
+    if (!S.connected) { cls = 'crit'; ic = 'alert'; title = 'ติดต่อโปรแกรมไม่ได้'; detail = 'ตรวจว่า Network Pulse ยังทำงานอยู่'; }
+    $('#ov-ico').className = `hero-ico ${cls}`;
+    // วาดไอคอนใหม่เฉพาะตอนสถานะเปลี่ยน ไอคอนจะได้เด้งครั้งเดียว ไม่เด้งทุกรอบ poll
+    if ($('#ov-ico').dataset.ic !== ic) { $('#ov-ico').dataset.ic = ic; $('#ov-ico').innerHTML = icon(ic); }
+    $('#ov-status').textContent = title;
+    $('#ov-status').className = `hero-big ${cls}`;
+    $('#ov-detail').textContent = detail || '';
+  }
+
+  function renderChart() {
+    if (!chart) return;
+    const end = S.serverNow;
+    if (range === 86400) {
+      if (!hist24) return;
+      chart.data.datasets = historyDatasets(hist24, { loss: false, fill: true });
+      chart.options.scales.x.min = (end - 86400) * 1000;
+    } else {
+      chart.data.datasets = liveDatasets(end - range, { fill: true });
+      chart.options.scales.x.min = (end - range) * 1000;
+    }
+    chart.options.scales.x.max = end * 1000;
+    chart.options.scales.x.time.tooltipFormat = range >= 3600 ? 'd MMM HH:mm' : 'HH:mm:ss';
+    chart.update('none');
+  }
+  async function load24() {
     try {
       const end = nowSec();
-      hist = await getJSON(`/api/history?start=${end - 86400}&end=${end}`);
-      if (chart) {
-        chart.data.datasets = historyDatasets(hist);
-        chart.options.scales.x.min = (end - 86400) * 1000;
-        chart.options.scales.x.max = end * 1000;
-        chart.update('none');
-      }
-      renderKpis();
-    } catch (_) { /* ลองใหม่รอบหน้า */ }
-  };
-  const loadEvents = async () => {
-    try {
-      const d = await getJSON('/api/events?limit=8');
-      $('#ov-events').innerHTML = d.events.length ? d.events.map(eventItem).join('') : '<div class="empty">ยังไม่มีเหตุการณ์ — ทุกอย่างปกติ</div>';
+      hist24 = await getJSON(`/api/history?start=${end - 86400}&end=${end}`);
+      if (range === 86400) renderChart();
     } catch (_) { }
-  };
-  const renderKpis = () => {
-    if (!hist) return;
-    const t = summaryTotals(hist);
-    const coverage = Math.min(100, 100 * hist.monitored_sec / 86400);
-    $('#ov-kpis').innerHTML = [
-      ['สำเร็จ (24 ชม.)', t.health === null ? '—' : t.health.toFixed(2), '%'],
-      ['Latency เฉลี่ย', fmtMs(t.avg), 'ms'],
-      ['Latency สูงสุด', fmtMs(t.max), 'ms'],
-      ['หลุด (ครั้ง)', String(t.outages), ''],
-      ['เวลาที่บันทึกได้', coverage.toFixed(0), '% ของ 24 ชม.'],
-    ].map(([l, v, u]) => `<div class="card"><div class="kpi-label">${l}</div><div class="kpi-val">${v}<small>${u}</small></div></div>`).join('');
-    const hv = $('#ov-health');
-    hv.textContent = t.health === null ? '—' : `${t.health.toFixed(2)}%`;
-    hv.className = `health-val ${t.health !== null && t.health < 95 ? 'c-crit' : t.health !== null && t.health < 99 ? 'c-warn' : 'c-ok'}`;
-    $('#ov-health-bar').style.width = `${t.health ?? 0}%`;
-    $('#ov-health-bar').style.background = t.health !== null && t.health < 95 ? C.crit : t.health !== null && t.health < 99 ? C.warn : C.ok;
-  };
+  }
+
+  function renderLegend() {
+    $('#ov-legend').innerHTML = (S.status?.targets ?? []).map((t, i) =>
+      `<span><i style="background:${targetColor(i)};box-shadow:0 0 6px ${targetColor(i)}"></i>${esc(t.name)} (${esc(t.host)})</span>`).join('');
+  }
+
+  function renderGauge() {
+    const ts = S.status?.targets ?? [];
+    const ext = extIdx().map((i) => freshMs(ts[i])).filter((v) => v !== undefined && v !== null);
+    const avg = ext.length ? ext.reduce((a, b) => a + b, 0) / ext.length : null;
+    tweenNum($('#g-val'), avg, fmtMs);
+    // วงเต็ม = เร็ว; หดลงเมื่อเข้าใกล้เกณฑ์เตือน
+    const frac = avg === null ? 0 : Math.max(0.06, Math.min(1, 1 - avg / thr()));
+    const circ = 2 * Math.PI * 64;
+    const arc = $('#g-arc');
+    arc.style.strokeDasharray = `${frac * circ} ${circ}`;  // ผ่าน style เพื่อให้ CSS transition ทำงาน
+    arc.setAttribute('stroke', avg !== null && avg > thr() ? C.warn : 'url(#g-grad)');
+    $('#g-list').innerHTML = ts.map((t, i) => {
+      const m = freshMs(t);
+      const cls = m === null ? 'crit' : m !== undefined && m > thr() ? 'warn' : '';
+      return `<div class="g-item"><div class="g-name"><i style="background:${targetColor(i)}"></i>${esc(t.name)}</div>
+        <div class="g-ms ${cls}">${m === undefined ? '—' : m === null ? 'timeout' : fmtMs(m) + ' ms'}</div></div>`;
+    }).join('');
+  }
+
+  function renderEvents() {
+    const list = S.recentEvents.slice(0, 5);
+    $('#ov-events').innerHTML = list.length ? list.map((e) => eventItem(e)).join('') : '<div class="empty">ยังไม่มีเหตุการณ์ — ทุกอย่างปกติ</div>';
+  }
+
+  function renderPath() {
+    const ts = S.status?.targets ?? [];
+    const gi = gwIdx();
+    const gw = ts[gi];
+    const ext = extIdx().map((i) => ts[i]);
+    const extUp = ext.filter((t) => t.state === 'up');
+    const best = extUp.map(freshMs).filter((v) => v !== undefined && v !== null);
+    const internet = !S.connected || !ext.length ? 'unknown' : ext.every((t) => t.state === 'down') ? 'down'
+      : ext.some((t) => tState(t) !== 'ok') ? 'warn' : ext.every((t) => t.state === 'unknown') ? 'unknown' : 'ok';
+    const first = ext[0];
+    const msTxt = (t) => { const m = freshMs(t); return m === undefined ? '—' : m === null ? 'ไม่ตอบ' : `${fmtMs(m)} ms`; };
+    const beat = S.status?.last_beat;
+    const alive = S.connected && beat && S.serverNow - beat <= 3 * (S.cfg?.interval_sec ?? 2) + 3;
+    const nodes = [
+      { ic: 'monitor', name: 'Local PC', sub: S.overview?.local_ip || S.overview?.hostname || 'เครื่องนี้', val: alive ? 'Online' : 'ไม่ทำงาน', st: alive ? 'ok' : 'down' },
+      { ic: 'router', name: 'Gateway', sub: gw?.host ?? 'ไม่ได้วัด', val: gw ? msTxt(gw) : '—', st: gw ? tState(gw) : 'unknown' },
+      { ic: 'globe', name: 'Internet', sub: 'ISP / Public', val: best.length ? `${fmtMs(Math.min(...best))} ms` : internet === 'down' ? 'หลุด' : '—', st: internet },
+      { ic: 'cloud', name: 'Target', sub: first?.host ?? '—', val: first ? msTxt(first) : '—', st: first ? tState(first) : 'unknown' },
+    ];
+    const cls = (s) => (s === 'down' ? 'down' : s === 'warn' ? 'warn' : '');
+    $('#ov-path').innerHTML = nodes.map((n) => `
+      <div class="path-node ${cls(n.st)}">
+        <div class="pn-ico">${icon(n.ic)}</div>
+        <div class="pn-name">${n.name}</div><div class="pn-sub" title="${esc(n.sub)}">${esc(n.sub)}</div>
+        <div class="pn-val">${esc(n.val)}</div>
+      </div>`).join('')
+      + nodes.slice(1).map((n, k) => `<span class="path-link ${cls(n.st)}" style="left:${25 * (k + 1)}%"></span>`).join('');
+    const st = overallState();
+    const tag = $('#ov-path-tag');
+    const tmap = { online: ['ok', 'Healthy'], degraded: ['warn', 'Degraded'], offline: ['crit', 'Offline'], unknown: ['unknown', 'Unknown'] };
+    const [tc, tt] = tmap[S.connected ? st : 'unknown'];
+    tag.className = `health-tag ${tc}`;
+    tag.innerHTML = `<span class="dot"></span>${tt}`;
+  }
+
+  function renderTraffic() {
+    const t = S.traffic;
+    const series = t?.series ?? [];
+    const last = series[series.length - 1];
+    const fresh = last && S.serverNow - last[0] < 10;
+    const [dv, du] = fmtRate(fresh ? last[1] : null);
+    const [uv, uu] = fmtRate(fresh ? last[2] : null);
+    $('#tr-down').innerHTML = `${dv}<small>${du}</small>`;
+    $('#tr-up').innerHTML = `${uv}<small>${uu}</small>`;
+    miniSpark($('#tr-down-spark'), series.map((p) => p[1]), C.primary, { minSpan: 1e5, floor: 0 });
+    miniSpark($('#tr-up-spark'), series.map((p) => p[2]), C.violet, { minSpan: 1e5, floor: 0 });
+    const [lv, lu] = fmtRate(t?.speed_bps);
+    $('#tr-foot').textContent = !t ? 'ไม่มีข้อมูล' : !t.available ? 'ใช้ได้บน Windows เท่านั้น'
+      : t.interface ? `${t.interface}${t.speed_bps ? ` · ลิงก์ ${lv} ${lu}` : ''}` : 'กำลังหาการ์ดเครือข่าย…';
+    $('#tr-foot').title = $('#tr-foot').textContent + '\nปริมาณรวมของทั้งเครื่อง (ทุกโปรแกรม) ผ่านการ์ดที่ใช้ออกอินเทอร์เน็ต';
+  }
+
+  function setExpanded(on) {
+    expanded = on;
+    const card = $('#lm-card');
+    card.classList.toggle('expanded', on);
+    $('#lm-expand').innerHTML = icon(on ? 'shrink' : 'expand');
+    $('#lm-expand').setAttribute('aria-label', on ? 'ย่อกราฟ' : 'ขยายกราฟ');
+    let bd = $('#lm-backdrop');
+    if (on && !bd) {
+      bd = document.createElement('div');
+      bd.id = 'lm-backdrop'; bd.className = 'backdrop';
+      bd.addEventListener('click', () => setExpanded(false));
+      document.body.appendChild(bd);
+    } else if (!on && bd) bd.remove();
+    chart?.resize();
+  }
+  const onKey = (e) => { if (e.key === 'Escape' && expanded) setExpanded(false); };
+
   return {
     mount(el) {
-      el.innerHTML = `
+      el.innerHTML = `<div class="ov">
         <div class="card hero">
+          <div class="hero-globe"></div>
           <div class="hero-status">
-            <span class="dot" id="ov-dot"></span>
+            <div class="hero-ico" id="ov-ico">${icon('check')}</div>
             <div><div class="hero-big" id="ov-status">—</div><div class="hero-detail" id="ov-detail">กำลังโหลด…</div></div>
           </div>
-          <div class="health">
-            <div class="kpi-label">Network Health · 24 ชม.</div>
-            <div class="health-val" id="ov-health">—</div>
+          <div class="hero-div"></div>
+          <div class="health" id="ov-health-wrap">
+            <div class="health-top">
+              <div><div class="health-label">Network Health (24 ชม.)</div><div class="health-val" id="ov-health">—</div></div>
+              <svg class="health-ico" viewBox="0 0 52 36" aria-hidden="true"><path pathLength="100" d="M2 20h12l5-12 7 22 6-16 4 6h14"/></svg>
+            </div>
             <div class="health-bar"><div id="ov-health-bar" style="width:0"></div></div>
           </div>
         </div>
-        <div class="grid targets mt" id="ov-targets"></div>
-        <div class="grid kpis mt" id="ov-kpis"></div>
-        <div class="grid two-col mt">
-          <div class="card">
-            <div class="card-head"><div><div class="card-title">Latency · 24 ชั่วโมงล่าสุด</div><div class="card-sub">ค่าเฉลี่ยรายนาที · ช่องว่างในกราฟ = คอมปิด/โปรแกรมไม่ทำงาน</div></div></div>
-            <div class="chart-box"><canvas id="ov-chart"></canvas></div>
+        <div class="grid kpi5">
+          ${kpiCard('lat', 'timer', 'Latency เฉลี่ย')}
+          ${kpiCard('jit', 'jitter', 'Jitter')}
+          ${kpiCard('loss', 'loss', 'Packet Loss')}
+          ${kpiCard('up', 'clock', 'Uptime (24 ชม.)')}
+          ${kpiCard('resp', 'bolt', 'Response (เร็วสุด)')}
+        </div>
+        <div class="grid row-mid">
+          <div class="card" id="lm-card">
+            <div class="card-head">
+              <div>${cardTitle('trend', 'Latency Monitor (Real-time)')}<div class="card-sub" style="margin:2px 0 0 34px">เปรียบเทียบความหน่วงของแต่ละปลายทาง</div></div>
+              <div class="head-tools">
+                <div class="seg-pill" id="lm-range">
+                  <button data-r="60" class="active">1m</button><button data-r="300">5m</button><button data-r="900">15m</button><button data-r="3600">1h</button><button data-r="86400">24h</button>
+                </div>
+                <button class="sq-btn" id="lm-expand" type="button" aria-label="ขยายกราฟ">${icon('expand')}</button>
+              </div>
+            </div>
+            <div class="lm-chart"><canvas id="ov-chart"></canvas></div>
+            <div class="legend-row" id="ov-legend"></div>
           </div>
           <div class="card">
-            <div class="card-head"><div class="card-title">เหตุการณ์ล่าสุด</div><a href="#/events" class="card-sub">ดูทั้งหมด →</a></div>
-            <ul class="ev-list" id="ov-events"><div class="empty">กำลังโหลด…</div></ul>
+            <div class="card-head">${cardTitle('trend', 'Latency ปัจจุบัน')}</div>
+            <div class="gauge-wrap">
+              <div class="gauge" title="วงเต็ม = เร็ว · วงสั้นลงเมื่อ latency เข้าใกล้เกณฑ์เตือน">
+                <svg viewBox="0 0 150 150" aria-hidden="true">
+                  <defs><linearGradient id="g-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#39D6A0"/><stop offset=".45" stop-color="#41D8EF"/><stop offset="1" stop-color="#A78BFA"/></linearGradient></defs>
+                  <circle cx="75" cy="75" r="64" fill="none" stroke="rgba(28,46,74,.9)" stroke-width="10"/>
+                  <circle id="g-arc" cx="75" cy="75" r="64" fill="none" stroke="url(#g-grad)" stroke-width="10" stroke-linecap="round" stroke-dasharray="0 999" style="filter:drop-shadow(0 0 6px rgba(65,216,239,.6))"/>
+                </svg>
+                <div class="gauge-in"><div class="gauge-val" id="g-val">—</div><div class="gauge-unit">ms</div><div class="gauge-sub">Average</div></div>
+              </div>
+              <div class="g-list" id="g-list"></div>
+            </div>
           </div>
-        </div>`;
-      updCards = targetCards($('#ov-targets'), 300, '5 นาทีล่าสุด');
-      chart = makeChart($('#ov-chart'), { lossAxis: true, tooltipFmt: 'd MMM HH:mm' });
-      loadHistory(); loadEvents();
-      timers.push(setInterval(loadHistory, 60000), setInterval(loadEvents, 30000));
+          <div class="card">
+            <div class="card-head">${cardTitle('list', 'เหตุการณ์ล่าสุด')}<a href="#/events" class="card-sub">ดูทั้งหมด →</a></div>
+            <ul class="ev-list one-line" id="ov-events"><div class="empty">กำลังโหลด…</div></ul>
+          </div>
+        </div>
+        <div class="grid row-bot">
+          <div class="card">
+            <div class="card-head">
+              <div>${cardTitle('route', 'Connection Path')}<div class="card-sub" style="margin:2px 0 0 34px">เส้นทางการเชื่อมต่อจากเครื่องของคุณสู่อินเทอร์เน็ต</div></div>
+              <span class="health-tag unknown" id="ov-path-tag"></span>
+            </div>
+            <div class="path" id="ov-path"></div>
+          </div>
+          <div class="card">
+            <div class="card-head">${cardTitle('nodes', 'Network Tools <span class="light">(Quick Access)</span>')}</div>
+            <div class="qtools">
+              <a class="qtool" href="#/tools/ping">${icon('prompt')}Ping</a>
+              <a class="qtool" href="#/tools/trace">${icon('topology')}Traceroute</a>
+              <a class="qtool" href="#/tools/dns">${icon('globe')}DNS Lookup</a>
+              <a class="qtool" href="#/tools/info">${icon('info')}IP Info</a>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">${cardTitle('traffic', 'การใช้งานเครือข่าย <span class="light">(Realtime)</span>')}</div>
+            <div class="traffic-row">
+              <div><div class="tr-label">Download</div><div class="tr-val"><span class="tr-arrow">${icon('down').replace('stroke="currentColor"', `stroke="${C.primary}"`)}</span><span class="tr-num" id="tr-down">—</span></div></div>
+              <canvas class="tr-spark" id="tr-down-spark"></canvas>
+            </div>
+            <div class="traffic-row">
+              <div><div class="tr-label">Upload</div><div class="tr-val"><span class="tr-arrow">${icon('up').replace('stroke="currentColor"', `stroke="${C.violet}"`)}</span><span class="tr-num" id="tr-up">—</span></div></div>
+              <canvas class="tr-spark" id="tr-up-spark"></canvas>
+            </div>
+            <div class="tr-foot" id="tr-foot"></div>
+          </div>
+        </div>
+      </div>`;
+      $('#lm-range').addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        range = +b.dataset.r;
+        [...$('#lm-range').children].forEach((x) => x.classList.toggle('active', x === b));
+        if (range === 86400 && !hist24) load24();
+        renderChart();
+      });
+      $('#lm-expand').addEventListener('click', () => setExpanded(!expanded));
+      document.addEventListener('keydown', onKey);
+      chart = makeChart($('#ov-chart'), { legend: false });
+      if (chart) chart.options.scales.y.ticks.maxTicksLimit = 6;
+      timers.push(setInterval(loadOverview, 60000), setInterval(() => { if (range === 86400) load24(); }, 60000));
+      loadOverview();
       this.update();
+      this.onRecent();
     },
     update() {
-      const st = S.connected ? (S.status?.overall?.status ?? 'unknown') : 'unknown';
-      const colors = { online: 'dot-ok pulse', degraded: 'dot-warn', offline: 'dot-crit' };
-      $('#ov-dot').className = `dot ${colors[st] ?? ''}`;
-      $('#ov-status').textContent = S.connected ? STATUS_TH[st] : 'ติดต่อเซิร์ฟเวอร์ไม่ได้';
-      $('#ov-status').className = `hero-big ${st === 'online' ? 'c-ok' : st === 'degraded' ? 'c-warn' : st === 'offline' ? 'c-crit' : ''}`;
-      $('#ov-detail').textContent = S.connected ? (S.status?.overall?.detail ?? '') : 'ตรวจว่าโปรแกรม Network Pulse ยังเปิดอยู่';
-      if (!$('#ov-targets').children.length && S.status) updCards = targetCards($('#ov-targets'), 300, '5 นาทีล่าสุด');
-      updCards?.();
+      renderHero();
+      renderKpis();
+      renderChart();
+      renderLegend();
+      renderGauge();
+      renderPath();
+      renderTraffic();
     },
-    onEvents() { loadEvents(); },
-    unmount() { timers.forEach(clearInterval); chart?.destroy(); },
+    onOverview() { renderUptime(); renderPath(); },
+    onRecent() { renderEvents(); },
+    unmount() {
+      timers.forEach(clearInterval);
+      document.removeEventListener('keydown', onKey);
+      if (expanded) setExpanded(false);
+      chart?.destroy();
+    },
   };
 };
 
@@ -676,7 +1184,7 @@ PAGES.history = () => {
             <td class="num ${s.loss_pct ? 'c-crit' : ''}">${s.loss_pct === null ? '—' : s.loss_pct.toFixed(2) + '%'}</td>
             <td class="num ${s.outages ? 'c-crit' : ''}">${s.outages}</td></tr>`;
         }).join('')}</tbody>`;
-      $('#hs-events').innerHTML = ev.events.length ? ev.events.map(eventItem).join('') : '<div class="empty">ไม่มีเหตุการณ์ในช่วงนี้</div>';
+      $('#hs-events').innerHTML = ev.events.length ? ev.events.map((e) => eventItem(e)).join('') : '<div class="empty">ไม่มีเหตุการณ์ในช่วงนี้</div>';
     } catch (e) {
       $('#hs-note').textContent = 'โหลดข้อมูลไม่สำเร็จ';
     }
@@ -1267,27 +1775,377 @@ PAGES.settings = () => {
   return self;
 };
 
-function soonPage(item) {
-  return {
-    mount(el) {
-      el.innerHTML = `<div class="card soon"><div>${icon(item.id)}<h2>เร็วๆ นี้</h2><p>${esc(item.soon)}</p></div></div>`;
+/* ---------- 03 Network Tools ---------- */
+const TOOL_CACHE = {};  // ผลล่าสุดของแต่ละเครื่องมือ (คงไว้เมื่อสลับแท็บ/หน้า)
+const TOOL_TABS = [
+  ['ping', 'prompt', 'Ping', 'ส่ง ping ซ้ำหลายครั้งเพื่อดู latency และ packet loss'],
+  ['trace', 'topology', 'Traceroute', 'ไล่ดูทีละ hop ว่าแพ็กเก็ตผ่านเราเตอร์ตัวไหนบ้าง (ใช้เวลา 10–60 วินาที)'],
+  ['dns', 'globe', 'DNS Lookup', 'แปลงชื่อโดเมนเป็น IP — หรือใส่ IP เพื่อหาชื่อกลับ'],
+  ['info', 'info', 'IP Info', 'ข้อมูลเครือข่ายของเครื่องที่รัน Network Pulse'],
+];
+
+function quickHosts() {
+  const hosts = [];
+  (S.status?.targets ?? []).forEach((t) => { if (t.host && t.host !== 'ไม่พบ') hosts.push(t.host); });
+  ['google.com', 'cloudflare.com'].forEach((h) => hosts.push(h));
+  return [...new Set(hosts)];
+}
+
+function renderToolResult(tab, d) {
+  if (!d) return '';
+  if (d.error) return `<div class="notice err">${esc(d.error)}</div>`;
+  if (tab === 'ping') {
+    const max = Math.max(1, ...d.results.filter((v) => v !== null));
+    return `<div class="stat-row">
+        <div class="stat"><div class="l">ส่ง / ได้รับ</div><div class="v">${d.received}/${d.sent}</div></div>
+        <div class="stat"><div class="l">Packet loss</div><div class="v ${d.loss_pct ? 'c-crit' : ''}">${d.loss_pct}<small>%</small></div></div>
+        <div class="stat"><div class="l">ต่ำสุด</div><div class="v">${fmtMs(d.min)}<small>ms</small></div></div>
+        <div class="stat"><div class="l">เฉลี่ย</div><div class="v">${fmtMs(d.avg)}<small>ms</small></div></div>
+        <div class="stat"><div class="l">สูงสุด</div><div class="v">${fmtMs(d.max)}<small>ms</small></div></div>
+      </div>
+      <div class="bars">${d.results.map((v, i) => `<div class="bar ${v === null ? 'fail' : ''}" style="height:${v === null ? 100 : Math.max(4, 100 * v / max)}%" title="#${i + 1}: ${v === null ? 'ไม่ตอบ' : fmtMs(v) + ' ms'}"></div>`).join('')}</div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>ปลายทาง</th><th class="num">เวลา</th></tr></thead><tbody>
+        ${d.results.map((v, i) => `<tr><td class="mono">${i + 1}</td><td class="mono">${esc(d.host)}</td>
+          <td class="num ${v === null ? 'c-crit' : v > thr() ? 'c-warn' : ''}">${v === null ? 'ไม่ตอบ (timeout)' : fmtMs(v) + ' ms'}</td></tr>`).join('')}
+      </tbody></table></div>`;
+  }
+  if (tab === 'trace') {
+    return `<div class="card-sub" style="margin-bottom:8px">${d.reached ? '<span class="c-ok">ถึงปลายทางแล้ว</span>' : '<span class="c-warn">ไปไม่ถึงปลายทางภายในจำนวน hop ที่กำหนด</span>'} · ${d.hops.length} hop · * = เราเตอร์ตัวนั้นไม่ตอบ (ปกติของ ISP หลายเจ้า)</div>
+      <div class="hop-list">${d.hops.map((h) => `<div class="hop ${h.ip ? '' : 'lost'}"><span class="n">${h.hop}</span><span class="pin"></span>
+        <span class="ip">${h.ip ? esc(h.ip) : '<span class="c-muted">ไม่ตอบ</span>'}</span>
+        <span class="ms">${h.ms.map((m) => (m === null ? '*' : fmtMs(m) + ' ms')).join(' · ')}</span></div>`).join('')}</div>`;
+  }
+  if (tab === 'dns') {
+    return `<div class="card-sub" style="margin-bottom:8px">${esc(d.query)} · ใช้เวลา ${d.ms} ms (ผ่าน DNS ที่เครื่องนี้ตั้งไว้)</div>
+      ${d.records.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>ชนิด</th><th>ค่า</th><th></th></tr></thead><tbody>
+        ${d.records.map((r) => `<tr><td><span class="badge b-latency_ok">${esc(r.type)}</span></td><td class="mono">${esc(r.value)}</td>
+          <td>${r.type === 'A' ? `<a class="link-btn" href="#/tools/ping/${encodeURIComponent(r.value)}">ping</a>` : ''}</td></tr>`).join('')}
+      </tbody></table></div>` : `<div class="notice warn">ไม่พบข้อมูล — ${d.reverse ? 'IP นี้ไม่มีชื่อย้อนกลับ' : 'ชื่อโดเมนนี้ไม่มีอยู่ หรือ DNS ไม่ตอบ'}</div>`}`;
+  }
+  if (tab === 'info') {
+    const [lv, lu] = fmtRate(d.link_bps);
+    const row = (k, v) => `<div class="sec-row"><span class="k">${k}</span><span class="mono">${v}</span></div>`;
+    return row('ชื่อเครื่อง', esc(d.hostname))
+      + row('IP ในวง LAN', esc(d.local_ip ?? 'ไม่พบ'))
+      + row('Default Gateway (router)', esc(d.gateway ?? 'ไม่พบ'))
+      + row('การ์ดเครือข่าย', esc(d.interface ?? '—'))
+      + row('ความเร็วลิงก์', d.link_bps ? `${lv} ${lu}` : '—')
+      + row('เปิดหน้านี้จาก', esc(d.client_ip))
+      + `<div class="sec-row"><span class="k">IP สาธารณะ (Public)</span><span id="pub-ip">${d.public_ip ? `<span class="mono">${esc(d.public_ip)}</span>` : '<button class="btn btn-sm" id="pub-btn" type="button">ตรวจ Public IP</button>'}</span></div>
+        <p class="muted" style="font-size:12px;margin:8px 0 0">ปุ่มตรวจ Public IP จะถาม api.ipify.org (บริการภายนอก) — ไม่ได้ส่งข้อมูลอื่นนอกจากการเชื่อมต่อ</p>`;
+  }
+  return '';
+}
+
+PAGES.tools = () => {
+  let tab = 'ping', reqId = 0;
+  const self = {
+    mount(el, args) {
+      el.innerHTML = `<div id="tl-root">
+        <div class="tool-tabs" id="tl-tabs">${TOOL_TABS.map(([id, ic, label]) => `<button class="qtool" type="button" data-t="${id}">${icon(ic)}${label}</button>`).join('')}</div>
+        <div class="card mt">
+          <div class="card-head"><div><div class="card-title" id="tl-title"></div><div class="card-sub" id="tl-help"></div></div></div>
+          <form class="tool-form" id="tl-form" autocomplete="off">
+            <input class="inp" id="tl-host" placeholder="IP หรือชื่อโดเมน เช่น 8.8.8.8, google.com" spellcheck="false" autocapitalize="off" aria-label="ปลายทาง">
+            <select class="inp" id="tl-count" style="flex:none;min-width:0;font-family:var(--font-ui)" aria-label="จำนวนครั้ง"><option value="4">4 ครั้ง</option><option value="10">10 ครั้ง</option></select>
+            <button class="btn btn-primary" id="tl-run" type="submit">เริ่ม</button>
+          </form>
+          <div class="quick-hosts" id="tl-quick"></div>
+          <div class="tool-out" id="tl-out"></div>
+        </div>
+      </div>`;
+      $('#tl-tabs').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-t]');
+        if (b) location.hash = `#/tools/${b.dataset.t}`;
+      });
+      $('#tl-form').addEventListener('submit', (e) => { e.preventDefault(); run(); });
+      $('#tl-quick').addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        $('#tl-host').value = b.dataset.h;
+        run();
+      });
+      $('#tl-out').addEventListener('click', async (e) => {
+        if (e.target.id !== 'pub-btn') return;
+        e.target.disabled = true;
+        e.target.innerHTML = '<span class="spin"></span>กำลังถาม…';
+        try {
+          const d = await postJSON('/api/tools/public-ip');
+          if (TOOL_CACHE.info) TOOL_CACHE.info.public_ip = d.ip;
+          $('#pub-ip').innerHTML = `<span class="mono">${esc(d.ip)}</span>`;
+        } catch (err) {
+          $('#pub-ip').innerHTML = `<span class="c-crit">${esc(err.message)}</span>`;
+        }
+      });
+      self.onArgs(args);
+    },
+    onArgs(args = []) {
+      const t = TOOL_TABS.find((x) => x[0] === args[0]) ? args[0] : 'ping';
+      const host = args[1] ? String(args[1]) : '';
+      tab = t;
+      reqId++;  // ทิ้งผลของงานที่ค้างจากแท็บเดิม
+      const [, ic, label, help] = TOOL_TABS.find((x) => x[0] === tab);
+      [...$('#tl-tabs').children].forEach((b) => b.classList.toggle('active', b.dataset.t === tab));
+      $('#tl-title').innerHTML = `${icon(ic, 'ct-ico')}<span>${label}</span>`;
+      $('#tl-help').textContent = help;
+      $('#tl-form').hidden = tab === 'info';
+      $('#tl-quick').hidden = tab === 'info';
+      $('#tl-count').hidden = tab !== 'ping';
+      $('#tl-run').disabled = false;
+      $('#tl-run').textContent = 'เริ่ม';
+      $('#tl-quick').innerHTML = quickHosts().map((h) => `<button type="button" data-h="${esc(h)}">${esc(h)}</button>`).join('');
+      const cached = TOOL_CACHE[tab];
+      $('#tl-host').value = host || cached?.host || cached?.query || '';
+      $('#tl-out').innerHTML = renderToolResult(tab, cached);
+      if (host || tab === 'info') run();
+    },
+    update() {  // รายการ IP ลัดอาจยังว่างตอนเปิดหน้า (ยังไม่ได้ผล poll แรก)
+      const box = $('#tl-quick');
+      const want = quickHosts();
+      if (box && box.dataset.v !== want.join(',')) {
+        box.innerHTML = want.map((h) => `<button type="button" data-h="${esc(h)}">${esc(h)}</button>`).join('');
+        box.dataset.v = want.join(',');
+      }
     },
   };
+
+  async function run() {
+    const host = $('#tl-host').value.trim();
+    if (tab !== 'info' && !host) { $('#tl-host').focus(); return; }
+    const my = ++reqId;
+    const myTab = tab;
+    $('#tl-run').disabled = true;
+    $('#tl-run').innerHTML = '<span class="spin"></span>กำลังทำงาน…';
+    if (tab !== 'info') $('#tl-out').innerHTML = `<div class="card-sub"><span class="spin"></span>${tab === 'trace' ? 'กำลังไล่เส้นทาง — อาจใช้เวลาถึง 1 นาที' : 'กำลังทำงาน…'}</div>`;
+    let d;
+    try {
+      if (tab === 'ping') d = await postJSON('/api/tools/ping', { host, count: +$('#tl-count').value });
+      else if (tab === 'trace') d = await postJSON('/api/tools/trace', { host });
+      else if (tab === 'dns') d = await postJSON('/api/tools/dns', { name: host });
+      else d = { ...(await getJSON('/api/tools/info')), public_ip: TOOL_CACHE.info?.public_ip };
+    } catch (err) {
+      d = { error: err.message, host };
+    }
+    if (page !== self || my !== reqId) return;
+    if (!d.error) TOOL_CACHE[myTab] = d;
+    $('#tl-out').innerHTML = renderToolResult(myTab, d);
+    $('#tl-run').disabled = false;
+    $('#tl-run').textContent = 'เริ่ม';
+  }
+  return self;
+};
+
+/* ---------- 04 Topology ---------- */
+PAGES.topology = () => {
+  let reqId = 0;
+  const nodeHtml = (ic, name, sub, val, st) => `
+    <div class="topo-node path-node ${st === 'down' ? 'down' : st === 'warn' ? 'warn' : ''}">
+      <div class="pn-ico">${icon(ic)}</div>
+      <div class="pn-name">${esc(name)}</div><div class="pn-sub" title="${esc(sub)}">${esc(sub)}</div>
+      ${val ? `<div class="pn-val">${esc(val)}</div>` : ''}
+    </div>`;
+  const linkHtml = (st, label = '') => `<div class="topo-link ${st === 'down' ? 'down' : st === 'warn' ? 'warn' : ''}">${label ? `<span>${esc(label)}</span>` : ''}</div>`;
+  const msTxt = (t) => { const m = freshMs(t); return m === undefined ? '' : m === null ? 'ไม่ตอบ' : `${fmtMs(m)} ms`; };
+  // เลื่อนกลุ่มปลายทางขึ้นให้จุดกึ่งกลางของเส้นแนวตั้งตรงกับเส้นหลัก (โหนดสูง 128px, เว้น 18px, ไอคอนอยู่ที่ 28px)
+  const branchOffset = (n) => (n > 1 ? Math.round(28 - (28 + (n * 128 + (n - 1) * 18) - 100) / 2) : 0);
+
+  function render() {
+    const ts = S.status?.targets ?? [];
+    const gw = ts[gwIdx()];
+    const ext = extIdx().map((i) => ts[i]);
+    const extDown = ext.length && ext.every((t) => t.state === 'down');
+    const netSt = !ext.length ? 'unknown' : extDown ? 'down' : ext.some((t) => tState(t) !== 'ok') ? 'warn' : 'ok';
+    const gwSt = gw ? tState(gw) : 'ok';
+    $('#tp-diagram').innerHTML = `<div class="topo-row">
+      ${nodeHtml('monitor', S.overview?.hostname || 'เครื่องนี้', S.overview?.local_ip || 'Local PC', 'Network Pulse', 'ok')}
+      ${linkHtml(gwSt, gw ? msTxt(gw) : '')}
+      ${gw ? nodeHtml('router', gw.name, gw.host, tState(gw) === 'down' ? 'ไม่ตอบ' : 'Router', gwSt) : nodeHtml('router', 'Router', 'ไม่ได้วัด', '', 'unknown')}
+      ${linkHtml(netSt === 'down' && gwSt === 'down' ? 'down' : netSt)}
+      ${nodeHtml('globe', 'Internet', 'ISP / Public', extDown ? (gwSt === 'down' ? 'ตรวจ router' : 'ISP มีปัญหา?') : '', netSt)}
+      ${ext.length > 1 ? linkHtml(netSt, '').replace('topo-link', 'topo-link stub') : ''}
+      <div class="topo-branch" style="margin-top:${branchOffset(ext.length)}px">${ext.map((t) => `<div class="topo-item">${linkHtml(tState(t), msTxt(t))}${nodeHtml('cloud', t.name, t.host, t.state === 'down' ? 'หลุด' : t.high ? 'latency สูง' : '', tState(t))}</div>`).join('') || '<div class="card-sub">ไม่มีเป้าหมายภายนอก</div>'}</div>
+    </div>`;
+    const off = branchOffset(ext.length);
+    $('#tp-diagram').style.paddingTop = `${18 + Math.max(0, -off)}px`;
+    $('#tp-detail').textContent = S.connected ? (S.status?.overall?.detail ?? '') : 'ติดต่อโปรแกรมไม่ได้';
+    const sel = $('#tp-target');
+    const want = quickHosts();
+    if (sel.dataset.v !== want.join(',')) {
+      const cur = sel.value;
+      sel.innerHTML = want.map((h) => `<option value="${esc(h)}">${esc(h)}</option>`).join('');
+      if (sel.dataset.touched && want.includes(cur)) sel.value = cur;
+      else if (ext[0] && want.includes(ext[0].host)) sel.value = ext[0].host;
+      sel.dataset.v = want.join(',');
+    }
+  }
+
+  async function trace() {
+    const host = $('#tp-target').value;
+    if (!host) return;
+    const my = ++reqId;
+    $('#tp-run').disabled = true;
+    $('#tp-run').innerHTML = '<span class="spin"></span>กำลังไล่เส้นทาง…';
+    $('#tp-hops').innerHTML = '<div class="card-sub"><span class="spin"></span>อาจใช้เวลาถึง 1 นาที</div>';
+    let d;
+    try { d = await postJSON('/api/tools/trace', { host }); } catch (err) { d = { error: err.message }; }
+    if (page !== self || my !== reqId) return;
+    if (!d.error) TOOL_CACHE.trace = d;
+    $('#tp-hops').innerHTML = renderToolResult('trace', d);
+    $('#tp-run').disabled = false;
+    $('#tp-run').textContent = 'ตรวจเส้นทาง';
+  }
+
+  const self = {
+    mount(el) {
+      el.innerHTML = `
+        <div class="card">
+          <div class="card-head"><div>${cardTitle('topology', 'แผนผังเครือข่าย')}<div class="card-sub" id="tp-detail" style="margin:2px 0 0 34px"></div></div></div>
+          <div class="tbl-wrap"><div class="topo" id="tp-diagram"></div></div>
+        </div>
+        <div class="card mt">
+          <div class="card-head">
+            <div>${cardTitle('route', 'เส้นทางจริง (Traceroute)')}<div class="card-sub" style="margin:2px 0 0 34px">ดูว่าแพ็กเก็ตวิ่งผ่านเราเตอร์ของ ISP กี่ตัว และช้าที่ hop ไหน</div></div>
+            <div class="head-tools"><select class="inp" id="tp-target" aria-label="ปลายทาง"></select><button class="btn btn-primary" id="tp-run" type="button">ตรวจเส้นทาง</button></div>
+          </div>
+          <div id="tp-hops">${TOOL_CACHE.trace ? renderToolResult('trace', TOOL_CACHE.trace) : '<div class="empty">กด “ตรวจเส้นทาง” เพื่อเริ่ม</div>'}</div>
+        </div>`;
+      $('#tp-run').addEventListener('click', trace);
+      $('#tp-target').addEventListener('change', (e) => { e.target.dataset.touched = '1'; });
+      if (!S.overview) loadOverview();
+      render();
+    },
+    update: render,
+    onOverview: render,
+  };
+  return self;
+};
+
+/* ---------- search (Ctrl+K) ---------- */
+const SEARCH_EXTRA = [
+  { label: 'Ping', sub: 'Network Tools', ic: 'prompt', href: '#/tools/ping' },
+  { label: 'Traceroute', sub: 'Network Tools', ic: 'topology', href: '#/tools/trace' },
+  { label: 'DNS Lookup', sub: 'Network Tools', ic: 'globe', href: '#/tools/dns' },
+  { label: 'IP Info', sub: 'Network Tools', ic: 'info', href: '#/tools/info' },
+  { label: 'เปลี่ยนเป้าหมาย / เกณฑ์เตือน', sub: 'Settings', ic: 'settings', href: '#/settings' },
+  { label: 'เข้าจากมือถือ / อุปกรณ์ที่ login', sub: 'Security', ic: 'security', href: '#/security' },
+];
+const HOST_LIKE = /^(?:\d{1,3}(?:\.\d{1,3}){3}|[a-z0-9-]+(?:\.[a-z0-9-]+)+)$/i;
+let searchSel = 0, searchItems = [];
+
+function searchResults(q) {
+  const s = q.trim(), ql = s.toLowerCase();
+  const out = [];
+  if (HOST_LIKE.test(s)) {
+    const h = encodeURIComponent(s);
+    out.push({ label: `Ping ${s}`, sub: 'Network Tools', ic: 'prompt', href: `#/tools/ping/${h}` },
+      { label: `Traceroute ${s}`, sub: 'Network Tools', ic: 'topology', href: `#/tools/trace/${h}` },
+      { label: `DNS Lookup ${s}`, sub: 'Network Tools', ic: 'globe', href: `#/tools/dns/${h}` });
+  }
+  if (ql) {
+    (S.status?.targets ?? []).forEach((t) => {
+      if (`${t.name} ${t.host}`.toLowerCase().includes(ql) && t.host !== 'ไม่พบ') {
+        out.push({ label: `Ping ${t.name}`, sub: t.host, ic: 'prompt', href: `#/tools/ping/${encodeURIComponent(t.host)}` });
+      }
+    });
+  }
+  const pages = NAV.map((n) => ({ label: n.label, sub: n.crumb, ic: n.id, href: `#/${n.id}` }));
+  [...pages, ...SEARCH_EXTRA].forEach((it) => {
+    if (!ql || `${it.label} ${it.sub}`.toLowerCase().includes(ql)) out.push(it);
+  });
+  return out.slice(0, 10);
+}
+function renderSearch() {
+  const pop = $('#search-pop');
+  searchItems = searchResults($('#search-in').value);
+  searchSel = Math.min(searchSel, Math.max(0, searchItems.length - 1));
+  pop.innerHTML = searchItems.length
+    ? searchItems.map((it, i) => `<button class="sr ${i === searchSel ? 'sel' : ''}" type="button" data-i="${i}">${icon(it.ic)}<span>${esc(it.label)}</span><small>${esc(it.sub)}</small></button>`).join('')
+    : '<div class="sr-empty">ไม่พบ — ลองพิมพ์ชื่อเมนู หรือ IP/โดเมนเพื่อ ping</div>';
+  pop.hidden = false;
+}
+function closeSearch() { $('#search-pop').hidden = true; }
+function pickSearch(i) {
+  const it = searchItems[i];
+  if (!it) return;
+  closeSearch();
+  $('#search-in').value = '';
+  $('#search-in').blur();
+  location.hash = it.href;
+}
+function setupSearch() {
+  const inp = $('#search-in');
+  inp.addEventListener('focus', () => { searchSel = 0; renderSearch(); });
+  inp.addEventListener('input', () => { searchSel = 0; renderSearch(); });
+  inp.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); searchSel = Math.min(searchSel + 1, searchItems.length - 1); renderSearch(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); searchSel = Math.max(searchSel - 1, 0); renderSearch(); }
+    else if (e.key === 'Enter') { e.preventDefault(); pickSearch(searchSel); }
+    else if (e.key === 'Escape') { closeSearch(); inp.blur(); }
+  });
+  $('#search-pop').addEventListener('mousedown', (e) => {
+    const b = e.target.closest('.sr');
+    if (b) { e.preventDefault(); pickSearch(+b.dataset.i); }
+  });
+  inp.addEventListener('blur', () => setTimeout(closeSearch, 100));
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); inp.focus(); inp.select(); }
+  });
+}
+
+/* ---------- bell ---------- */
+function setupBell() {
+  const btn = $('#bell-btn'), pop = $('#bell-pop');
+  const close = () => { pop.hidden = true; btn.setAttribute('aria-expanded', 'false'); };
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!pop.hidden) { close(); return; }
+    renderBellList();
+    pop.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+  });
+  $('#bell-read').addEventListener('click', () => markSeen());
+  pop.addEventListener('click', (e) => { if (e.target.closest('a')) { close(); markSeen(); } });
+  document.addEventListener('click', (e) => { if (!pop.hidden && !e.target.closest('.bell-wrap')) close(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+  renderNotifButton();
+  $('#notif-btn').addEventListener('click', async () => {
+    if (!('Notification' in window) || Notification.permission !== 'default') return;
+    await Notification.requestPermission();
+    renderNotifButton();
+  });
 }
 
 /* ---------- router ---------- */
 function renderNav(active) {
-  $('#nav').innerHTML = NAV.map((n) => `
-    <a href="#/${n.id}" class="${n.id === active ? 'active' : ''}">
-      <span class="num">${n.num}</span>${icon(n.id)}<span>${n.label}</span>${n.soon ? '<span class="soon-tag">เร็วๆ นี้</span>' : ''}
+  $('#nav').innerHTML = NAV.map((n) => `${n.sep ? '<div class="nav-sep"></div>' : ''}
+    <a href="#/${n.id}" class="${n.id === active ? 'active' : ''}" ${n.id === active ? 'aria-current="page"' : ''}>
+      ${icon(n.id)}<span>${n.label}</span>${n.badge ? `<span class="nav-badge" id="nav-badge-${n.id}" hidden></span>` : ''}
     </a>`).join('');
+  renderBadges();
+}
+
+function parseHash() {
+  const parts = location.hash.replace(/^#\/?/, '').split('/').map((p) => { try { return decodeURIComponent(p); } catch (_) { return p; } });
+  return { id: parts[0] || 'overview', args: parts.slice(1).filter(Boolean) };
+}
+
+/* อนิเมชันตอนเปิดหน้า: การ์ดลอยขึ้นทีละใบ แล้วถอด class ออก
+   เพื่อไม่ให้การ์ดที่ถูกวาดใหม่ภายหลังเล่นซ้ำ */
+let enterTimer = 0;
+function animateIn(view) {
+  clearTimeout(enterTimer);
+  view.classList.remove('page-enter');
+  void view.offsetWidth;
+  [...view.querySelectorAll('.card')].forEach((c, i) => c.style.setProperty('--i', Math.min(i, 12)));
+  view.classList.add('page-enter');
+  enterTimer = setTimeout(() => view.classList.remove('page-enter'), 1800);
 }
 
 let currentId = null;
 function route() {
-  const id = location.hash.replace(/^#\/?/, '') || 'overview';
+  const { id, args } = parseHash();
   const item = NAV.find((n) => n.id === id) || NAV[0];
-  if (item.id === currentId) return;
+  if (item.id === currentId) { page?.onArgs?.(args); return; }
   if (page?.isDirty?.() && !confirm('ยังไม่ได้บันทึกการตั้งค่า — ออกจากหน้านี้เลยไหม?')) {
     history.replaceState(null, '', `#/${currentId}`);
     return;
@@ -1296,30 +2154,32 @@ function route() {
   try { page?.unmount?.(); } catch (_) { }
   renderNav(item.id);
   $('#page-title').textContent = item.label;
-  $('#crumb').textContent = `${item.num} · ${item.crumb}`;
+  $('#crumb').innerHTML = `<span class="mono">${item.num}</span> / ${esc(item.crumb)}`;
   document.title = `${item.label} · Network Pulse`;
   const view = $('#view');
   view.scrollTop = 0;
-  page = item.soon ? soonPage(item) : PAGES[item.id]();
-  page.mount(view);
+  page = PAGES[item.id]();
+  page.mount(view, args);
+  animateIn(view);
+  const pt = $('#page-title');
+  pt.classList.remove('title-anim'); void pt.offsetWidth; pt.classList.add('title-anim');
+  if (item.id === 'events') markSeen();
 }
 
 /* ---------- boot ---------- */
 async function boot() {
-  setInterval(() => { $('#clock').textContent = fmtClock(nowSec()); }, 1000);
-  $('#clock').textContent = fmtClock(nowSec());
-  renderNotifButton();
-  $('#notif-btn').addEventListener('click', async () => {
-    if (!('Notification' in window) || Notification.permission !== 'default') return;
-    await Notification.requestPermission();
-    renderNotifButton();
-  });
+  tickClock();
+  setInterval(tickClock, 1000);
+  setupSearch();
+  setupBell();
   $('#logout-btn').addEventListener('click', async () => {
     try { await postJSON('/api/logout'); } catch (_) { }
     toLogin();
   });
   await loadConfig();
   setInterval(loadConfig, 60000);
+  loadRecentEvents();
+  setInterval(loadRecentEvents, 30000);
   window.addEventListener('hashchange', route);
   window.addEventListener('beforeunload', (e) => {
     if (page?.isDirty?.()) { e.preventDefault(); e.returnValue = ''; }

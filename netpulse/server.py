@@ -10,7 +10,7 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-from . import __version__, db
+from . import __version__, db, tools
 from . import settings as settings_mod
 from .auth import COOKIE_NAME, is_lan_client
 from .config import BASE_DIR, CONFIG_PATH, DEFAULTS
@@ -59,11 +59,13 @@ def detect_lan_ip(probe="8.8.8.8"):
 
 
 class AppContext:
-    def __init__(self, cfg, monitor, auth, config_path=CONFIG_PATH):
+    def __init__(self, cfg, monitor, auth, config_path=CONFIG_PATH, traffic=None):
         self.cfg = cfg
         self.monitor = monitor
         self.auth = auth
+        self.traffic = traffic
         self.config_path = config_path
+        self.overview_cache = (0.0, None)
         self.running_targets = settings_mod.targets_signature(cfg["targets"])
         self.lan = {"enabled": cfg["lan_access"], "ip": None, "bound": False, "error": None}
 
@@ -90,7 +92,50 @@ def make_handler(ctx):
             "rounds": db.recent_rounds(conn, since, target_ids),
             "events": list(reversed(db.events(conn, 50, after_id=after))) if after is not None else [],
             "last_event_id": db.last_event_id(conn),
+            "traffic": ctx.traffic.snapshot() if ctx.traffic else None,
         }
+
+    def api_overview(h, conn, qs):
+        """สถิติ 24 ชม. สำหรับหน้า Overview (คำนวณจากทุกรอบ จึง cache ไว้ 30 วินาที)"""
+        at, cached = ctx.overview_cache
+        if cached and time.monotonic() - at < 30:
+            return cached
+        now = int(time.time())
+        hour = 3600
+        end = (now // hour + 1) * hour
+        ext = [t["id"] for t in cfg["targets"] if t["kind"] != "gateway"]
+        cells = db.round_health(conn, end - 48 * hour, end, ext, cfg["latency_threshold_ms"], hour)
+
+        def total(a, b):
+            n = up = ok = 0
+            for bk, (r, u, g) in cells.items():
+                if a <= bk < b:
+                    n, up, ok = n + r, up + u, ok + g
+            return n, up, ok
+
+        n, up, ok = total(end - 24 * hour, end)
+        pn, pup, _ = total(end - 48 * hour, end - 24 * hour)
+        pct = lambda a, b: round(100 * a / b, 3) if b else None
+        series = []
+        for bk in range(end - 24 * hour, end, hour):
+            r, u, _g = cells.get(bk, (0, 0, 0))
+            series.append([bk, pct(u, r)])
+        result = {
+            "uptime_24h": pct(up, n), "uptime_prev_24h": pct(pup, pn),
+            "health_24h": pct(ok, n), "rounds_24h": n,
+            "monitored_sec_24h": n * cfg["interval_sec"], "uptime_series": series,
+            "hostname": socket.gethostname(), "local_ip": detect_lan_ip(),
+        }
+        ctx.overview_cache = (time.monotonic(), result)
+        return result
+
+    def api_tool_info(h, conn, qs):
+        snap = monitor.snapshot()
+        gw = next((t["host"] for t in snap["targets"] if t["kind"] == "gateway"), None)
+        tr = ctx.traffic.snapshot(limit=1) if ctx.traffic else {}
+        return {"hostname": socket.gethostname(), "local_ip": detect_lan_ip(), "gateway": gw,
+                "interface": tr.get("interface"), "link_bps": tr.get("speed_bps"),
+                "client_ip": h.client_address[0]}
 
     def api_history(h, conn, qs):
         now = int(time.time())
@@ -221,11 +266,38 @@ def make_handler(ctx):
                 return 200, {"ok": True, "removed": n, "self": True}, auth.clear_cookie()
         return 200, {"ok": True, "removed": n}, None
 
+    def _tool(fn, *args):
+        try:
+            return 200, fn(*args), None
+        except tools.Busy as e:
+            return 429, {"error": str(e)}, None
+        except tools.ToolError as e:
+            return 400, {"error": str(e)}, None
+
+    def post_tool_ping(h, conn, body):
+        try:
+            count = int(body.get("count", 4))
+        except (TypeError, ValueError):
+            raise ApiError("count ต้องเป็นตัวเลข")
+        return _tool(tools.ping_series, body.get("host"), count, cfg["ping_timeout_ms"])
+
+    def post_tool_trace(h, conn, body):
+        return _tool(tools.traceroute, body.get("host"))
+
+    def post_tool_dns(h, conn, body):
+        return _tool(tools.dns_lookup, body.get("name"))
+
+    def post_tool_public_ip(h, conn, body):
+        return _tool(lambda: {"ip": tools.public_ip()})
+
     get_routes = {"/api/live": api_live, "/api/history": api_history, "/api/events": api_events,
                   "/api/config": api_config, "/api/auth-status": api_auth_status,
-                  "/api/sessions": api_sessions, "/api/settings": api_settings}
+                  "/api/sessions": api_sessions, "/api/settings": api_settings,
+                  "/api/overview": api_overview, "/api/tools/info": api_tool_info}
     post_routes = {"/api/login": post_login, "/api/logout": post_logout,
-                   "/api/sessions/revoke": post_revoke, "/api/settings": post_settings}
+                   "/api/sessions/revoke": post_revoke, "/api/settings": post_settings,
+                   "/api/tools/ping": post_tool_ping, "/api/tools/trace": post_tool_trace,
+                   "/api/tools/dns": post_tool_dns, "/api/tools/public-ip": post_tool_public_ip}
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "NetworkPulse/" + __version__

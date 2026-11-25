@@ -10,6 +10,7 @@ from netpulse.auth import Auth
 from netpulse.config import BASE_DIR, load_config
 from netpulse.monitor import Monitor
 from netpulse.server import AppContext, serve, start_lan_listener
+from netpulse.traffic import TrafficMeter
 
 LOG_PATH = os.path.join(BASE_DIR, "data", "netpulse.log")
 LOG_MAX_BYTES = 1_000_000
@@ -61,7 +62,8 @@ def main():
         print(e)
         sys.exit(1)
     monitor = Monitor(cfg)
-    ctx = AppContext(cfg, monitor, auth)
+    traffic = TrafficMeter()
+    ctx = AppContext(cfg, monitor, auth, traffic=traffic)
     try:
         httpd = serve(ctx, cfg["host"])
     except OSError as e:
@@ -70,6 +72,7 @@ def main():
               "ดูสถานะ/หยุดตัวที่ทำงานเบื้องหลัง:  python autostart.py status  |  python autostart.py stop")
         sys.exit(1)
     monitor.start()
+    traffic.start()
     print(f"Network Pulse กำลังทำงาน → http://localhost:{cfg['port']}  (กด Ctrl+C เพื่อหยุด)", flush=True)
     if not auth.enabled:
         print("ยังไม่ได้ตั้งรหัสผ่าน: เปิดได้เฉพาะเครื่องนี้โดยไม่ต้อง login — ตั้งรหัสด้วย  python setup_auth.py", flush=True)
