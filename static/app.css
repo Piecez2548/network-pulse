@@ -31,10 +31,10 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; }
-/* จอคอม: แสดงที่ 75% (เท่ากับซูมเบราว์เซอร์ 75%) — มือถือคงขนาดเดิม */
+/* จอคอม: แสดงที่ 67.5% (= 75% × ซูมเบราว์เซอร์ 90% ที่ผู้ใช้เลือก) — มือถือคงขนาดเดิม */
 :root { --zoom: 1; }
 @media (min-width: 821px) {
-  :root { --zoom: .75; }
+  :root { --zoom: .675; }
   html { zoom: var(--zoom); }
 }
 body {
@@ -557,7 +557,7 @@ select.date-in { font-family: var(--font-ui); }
 .soon p { color: var(--muted); max-width: 440px; margin: 6px auto 0; }
 
 /* ---------- responsive ---------- */
-@media (max-width: 1125px) {
+@media (max-width: 1012px) {
   .kval { font-size: 25px; }
   .kico { width: 40px; height: 40px; }
   .row-mid { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
@@ -565,7 +565,7 @@ select.date-in { font-family: var(--font-ui); }
   .row-bot { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .row-bot > :first-child { grid-column: 1 / -1; }
 }
-@media (max-width: 960px) {
+@media (max-width: 864px) {
   :root { --sidebar-w: 236px; }
   .kpi5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .hero { grid-template-columns: 1fr; gap: 16px; }
